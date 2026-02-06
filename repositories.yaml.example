@@ -1,0 +1,30 @@
+# 备份目的地配置 (restic repositories)
+# 凭证支持直接填写或引用环境变量: ${ENV_VAR}
+# 复制为 repositories.yaml 并填入实际值
+
+default: local
+
+repositories:
+  local:
+    type: local
+    path: /tmp/way-backup
+    credentials:
+      password: ${RESTIC_PASSWORD}
+
+  s3:
+    type: s3
+    endpoint: s3.example.com
+    bucket: my-backup-bucket
+    options:
+      bucket_lookup: dns
+    credentials:
+      password: ${RESTIC_PASSWORD}
+      access_key_id: ${AWS_ACCESS_KEY_ID}
+      secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+
+  sftp:
+    type: sftp
+    host: backup.example.com
+    path: /backup/myhost
+    credentials:
+      password: ${RESTIC_PASSWORD}

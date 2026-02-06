@@ -1,0 +1,60 @@
+# 备份规则配置
+# 备份目的地见 repositories.yaml
+# 复制为 rules.yaml 并根据实际情况修改
+
+# 备份时间 (cron格式，留空则不执行)
+schedule:
+  backup:
+    - "0 12 * * *"   # 每天中午
+    - "0 18 * * *"   # 每天傍晚
+  prune: "0 4 * * 0" # 每周日凌晨4点清理旧快照
+  check: ""          # 完整性检查，留空不执行
+
+# 快照保留策略
+retention:
+  keep_daily: 7
+  keep_weekly: 4
+  keep_monthly: 6
+
+projects:
+  data:
+    description: 数据目录
+    paths:
+      - /path/to/data
+    excludes:
+      - cache
+      - tmp
+
+  config:
+    description: 配置文件
+    paths:
+      - /home/user/.config
+      - /home/user/.ssh
+    excludes: []
+
+# 全局排除规则 - 适用于所有项目
+global_excludes:
+  # 包管理
+  - node_modules
+  - .venv
+  - venv
+  - __pycache__
+  - "*.pyc"
+  - vendor
+
+  # 缓存
+  - .cache
+
+  # 构建产物
+  - dist
+  - build
+  - .next
+
+  # IDE配置
+  - .idea
+  - .vscode
+
+  # 临时文件
+  - "*.log"
+  - "*.tmp"
+  - "*.swp"
