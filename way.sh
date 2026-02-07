@@ -23,6 +23,16 @@ load_env() {
     [[ -f "$WAY_DIR/.env" ]] && source "$WAY_DIR/.env" || true
 }
 
+# 展开 ${VAR} 语法
+expand_env() {
+    local value="$1"
+    if [[ "$value" =~ ^\$\{(.+)\}$ ]]; then
+        echo "${!BASH_REMATCH[1]:-}"
+    else
+        echo "$value"
+    fi
+}
+
 # 设置 restic 环境变量
 setup_restic_env() {
     local repo_file="$WAY_DIR/repositories.yaml"
@@ -59,14 +69,9 @@ setup_restic_env() {
     esac
 
     # 展开凭证
-    local password=$(yq ".repositories.$repo_name.credentials.password" "$repo_file")
-    local access_key=$(yq ".repositories.$repo_name.credentials.access_key_id" "$repo_file")
-    local secret_key=$(yq ".repositories.$repo_name.credentials.secret_access_key" "$repo_file")
-
-    # 展开 ${VAR} 语法
-    [[ "$password" =~ ^\$\{(.+)\}$ ]] && password="${!BASH_REMATCH[1]:-}"
-    [[ "$access_key" =~ ^\$\{(.+)\}$ ]] && access_key="${!BASH_REMATCH[1]:-}"
-    [[ "$secret_key" =~ ^\$\{(.+)\}$ ]] && secret_key="${!BASH_REMATCH[1]:-}"
+    local password=$(expand_env "$(yq ".repositories.$repo_name.credentials.password" "$repo_file")")
+    local access_key=$(expand_env "$(yq ".repositories.$repo_name.credentials.access_key_id" "$repo_file")")
+    local secret_key=$(expand_env "$(yq ".repositories.$repo_name.credentials.secret_access_key" "$repo_file")")
 
     [[ -n "$password" && "$password" != "null" ]] && export RESTIC_PASSWORD="$password" || true
     [[ -n "$access_key" && "$access_key" != "null" ]] && export AWS_ACCESS_KEY_ID="$access_key" || true
@@ -103,6 +108,7 @@ cmd_run() {
 
     local failed=()
     local succeeded=()
+    local start_time=$(date +%s%3N)
 
     for project in $projects; do
         echo "=== Backing up: $project ==="
@@ -141,10 +147,27 @@ cmd_run() {
         echo ""
     done
 
+    local end_time=$(date +%s%3N)
+    local duration=$((end_time - start_time))
+
     # 汇报结果
     echo "=== Summary ==="
     [[ ${#succeeded[@]} -gt 0 ]] && echo "Succeeded: ${succeeded[*]}"
     [[ ${#failed[@]} -gt 0 ]] && echo "Failed: ${failed[*]}"
+
+    # Uptime Kuma 通知
+    local push_url=$(expand_env "$(yq '.uptime_kuma.push_url // ""' "$rules_file")")
+    if [[ -n "$push_url" && "$push_url" != "null" ]]; then
+        local status="up"
+        [[ ${#failed[@]} -gt 0 ]] && status="down"
+        local msg="Succeeded: ${#succeeded[@]}, Failed: ${#failed[@]}"
+        local encoded_msg=$(printf '%s' "$msg" | jq -sRr @uri)
+        if curl -sf "${push_url}?status=${status}&msg=${encoded_msg}&ping=${duration}" > /dev/null; then
+            echo "Uptime Kuma notified: status=$status, ping=${duration}ms"
+        else
+            echo "Uptime Kuma notification failed"
+        fi
+    fi
 
     [[ ${#failed[@]} -gt 0 ]] && exit 1
     exit 0

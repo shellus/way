@@ -128,4 +128,4 @@ credentials:
 
 ## 开发
 
-- [`CONTRIBUTING.md`](docs/CONTRIBUTING.md)。
+参见 [CLAUDE.md](CLAUDE.md)。
