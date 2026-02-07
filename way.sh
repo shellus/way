@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WAY_DIR="${WAY_DIR:-$HOME/way}"
+WAY_DIR="${WAY_DIR:-$(dirname "$(readlink -f "$0")")}"
 REMOTE="default"
 RESTIC_S3_OPTIONS=()
 
@@ -222,6 +222,11 @@ cmd_cron() {
     esac
 }
 
+# env 命令：显示所有环境变量
+cmd_env() {
+    env | sort
+}
+
 # 主命令分发
 CMD="${1:-}"
 case "$CMD" in
@@ -232,6 +237,9 @@ case "$CMD" in
     gc)
         shift
         cmd_gc "$@"
+        ;;
+    env)
+        cmd_env
         ;;
     cron)
         shift
