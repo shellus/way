@@ -3,6 +3,7 @@ set -euo pipefail
 
 WAY_DIR="${WAY_DIR:-$HOME/way}"
 REMOTE="default"
+RESTIC_S3_OPTIONS=()
 
 # 解析 --remote 参数
 while [[ $# -gt 0 ]]; do
@@ -37,6 +38,10 @@ setup_restic_env() {
             local endpoint=$(yq ".repositories.$repo_name.endpoint" "$repo_file")
             local bucket=$(yq ".repositories.$repo_name.bucket" "$repo_file")
             export RESTIC_REPOSITORY="s3:https://$endpoint/$bucket"
+
+            # 读取 s3 options
+            local bucket_lookup=$(yq ".repositories.$repo_name.options.bucket_lookup // \"\"" "$repo_file")
+            [[ -n "$bucket_lookup" && "$bucket_lookup" != "null" ]] && RESTIC_S3_OPTIONS+=("-o" "s3.bucket-lookup=$bucket_lookup")
             ;;
         local)
             local path=$(yq ".repositories.$repo_name.path" "$repo_file")
@@ -127,7 +132,7 @@ cmd_run() {
         fi
 
         # 执行备份
-        if restic backup --tag="way:$project" "${excludes[@]}" "${extra_args[@]}" "${paths[@]}"; then
+        if restic "${RESTIC_S3_OPTIONS[@]}" backup --tag="way:$project" "${excludes[@]}" "${extra_args[@]}" "${paths[@]}"; then
             succeeded+=("$project")
         else
             failed+=("$project")
@@ -157,7 +162,7 @@ cmd_gc() {
     echo "=== Cleaning snapshots ==="
     echo "Policy: daily=$keep_daily, weekly=$keep_weekly, monthly=$keep_monthly"
 
-    restic forget --prune \
+    restic "${RESTIC_S3_OPTIONS[@]}" forget --prune \
         --keep-daily="$keep_daily" \
         --keep-weekly="$keep_weekly" \
         --keep-monthly="$keep_monthly" \
@@ -238,6 +243,6 @@ case "$CMD" in
         ;;
     *)
         # 透传给 restic
-        exec restic "$@"
+        exec restic "${RESTIC_S3_OPTIONS[@]}" "$@"
         ;;
 esac

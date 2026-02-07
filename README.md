@@ -93,6 +93,17 @@ cp rules.yaml.example rules.yaml
 - **retention**: 快照保留策略
 - **global_excludes**: 全局排除规则
 
+#### 排除规则通配符语法
+
+restic 使用 Go 的 filepath.Match 语法：
+
+- `*` 匹配任意字符，但**不跨越目录分隔符**
+- `**` 匹配任意子目录
+
+示例：
+- `*Cache*` 只匹配当前目录下含 Cache 的文件/目录
+- `**/*Cache*` 匹配任意深度子目录下含 Cache 的文件/目录
+
 ### repositories.yaml
 
 备份目的地配置，参考 [`repositories.yaml`](repositories.yaml)。
