@@ -225,6 +225,12 @@ cmd_cron() {
             generate_cron
             ;;
         install)
+            # 检查 /usr/local/bin/way 是否存在
+            if [[ ! -x /usr/local/bin/way ]]; then
+                echo "Error: /usr/local/bin/way not found. Run: ln -sf $WAY_DIR/way.sh /usr/local/bin/way"
+                exit 1
+            fi
+
             # 获取现有 crontab，移除旧的 way 条目
             local existing
             existing=$(crontab -l 2>/dev/null | sed "/$marker_start/,/$marker_end/d" || true)

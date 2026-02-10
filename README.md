@@ -52,9 +52,23 @@
 
 ---
 
+## 依赖
+
+- [restic](https://restic.net/) - 备份引擎
+- [yq](https://github.com/mikefarah/yq/) - YAML 解析（不能用 apt 安装，需从 GitHub 下载）
+
+```bash
+# 安装 yq（以 v4.52.2 为例）
+wget https://github.com/mikefarah/yq/releases/download/v4.52.2/yq_linux_amd64 -O /usr/local/bin/yq
+chmod +x /usr/local/bin/yq
+```
+
 ## 快速开始
 
 ```bash
+# 安装
+ln -sf /path/to/way.sh /usr/local/bin/way
+
 # way 自己的命令（不与 restic 冲突）
 way run                 # 执行备份（读取 rules.yaml 的项目和排除规则）
 way run data            # 只备份 data 项目
@@ -124,6 +138,66 @@ AWS_SECRET_ACCESS_KEY=your-secret-key
 credentials:
   password: ${RESTIC_PASSWORD}
   access_key_id: ${AWS_ACCESS_KEY_ID}
+```
+
+## 凭证离线备份
+
+`repositories.yaml` 和 `.env` 包含 restic 仓库密码和云存储凭证。这两个文件被 `.gitignore` 排除，不会进入版本控制，也不会被 way 自身备份。
+
+**如果本机不可访问且遗忘了这些凭证，所有备份数据将永久无法恢复。**
+
+必须在本机之外单独保存一份：
+
+- 密码管理器（推荐）
+- 加密笔记
+- 离线存储（U 盘、纸质打印）
+
+需要保存的信息：
+
+| 项目 | 来源 |
+|------|------|
+| restic 仓库密码 | `.env` 中的 `RESTIC_PASSWORD` |
+| S3 访问凭证 | `.env` 中的 `AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY` |
+| 仓库地址 | `repositories.yaml` 中的 `url` |
+
+## 数据恢复
+
+way 透传所有 restic 命令，恢复数据时只需通过 way 调用 restic 的恢复相关命令。way 负责设置仓库连接和认证环境变量，无需手动配置。
+
+### 1. 查看快照列表
+
+```bash
+way snapshots                    # 列出所有快照
+way snapshots --tag=way:home     # 只看 home 项目的快照
+way snapshots --tag=way:data     # 只看 data 项目的快照
+```
+
+### 2. 浏览快照内容
+
+```bash
+way ls <snapshot-id>             # 列出快照中的所有文件
+way ls <snapshot-id> /root/.ssh  # 列出快照中指定目录的文件
+way find --snapshot <id> <filename>  # 在快照中搜索文件
+```
+
+### 3. 恢复文件
+
+```bash
+# 恢复整个快照到指定目录
+way restore <snapshot-id> --target /tmp/restore
+
+# 只恢复特定路径
+way restore <snapshot-id> --target /tmp/restore --include /root/.ssh
+
+# 恢复单个文件到标准输出（适合快速查看）
+way dump <snapshot-id> /root/.gitconfig
+```
+
+### 4. 从其他仓库恢复
+
+```bash
+way --remote=oss snapshots
+way --remote=oss restore <snapshot-id> --target /tmp/restore
 ```
 
 ## 开发
