@@ -51,7 +51,6 @@ global_excludes:
 
   # 构建产物
   - dist
-  - build
   - .next
 
   # IDE配置
