@@ -40,8 +40,8 @@ install_restic() {
         echo "Installing restic v${RESTIC_VERSION}..."
 
         if ! command -v bunzip2 &>/dev/null; then
-            echo "Error: bunzip2 is required. Run: apt install -y bzip2"
-            exit 1
+            echo "Installing bzip2..."
+            apt update -qq && apt install -y -qq bzip2
         fi
 
         local url="https://github.com/restic/restic/releases/download/v${RESTIC_VERSION}/restic_${RESTIC_VERSION}_linux_${ARCH}.bz2"
