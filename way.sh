@@ -23,76 +23,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# 检测并安装依赖
-check_deps() {
-    local deps_missing=()
-    command -v restic &>/dev/null || deps_missing+=(restic)
-    command -v yq &>/dev/null || deps_missing+=(yq)
-
-    [[ ${#deps_missing[@]} -eq 0 ]] && return 0
-
-    # 非交互环境直接报错
-    if [[ ! -t 0 ]]; then
-        echo "Error: missing dependencies: ${deps_missing[*]}"
-        echo "Run 'way' interactively to auto-install, or install manually."
-        exit 1
-    fi
-
-    # 检测架构
-    local arch
-    case "$(uname -m)" in
-        x86_64)  arch="amd64" ;;
-        aarch64) arch="arm64" ;;
-        *)
-            echo "Error: unsupported architecture: $(uname -m)"
-            exit 1
-            ;;
-    esac
-
-    for dep in "${deps_missing[@]}"; do
-        install_dep "$dep" "$arch"
-    done
-}
-
-install_dep() {
-    local dep="$1" arch="$2"
-
-    case "$dep" in
-        restic)
-            local version="0.17.1"
-            echo "restic is not installed."
-            read -r -p "Install restic v${version}? [press Enter to install, Ctrl+C to cancel] "
-            echo "Installing restic v${version}..."
-
-            if ! command -v bunzip2 &>/dev/null; then
-                echo "Error: bunzip2 is required to install restic. Run: apt install -y bzip2"
-                exit 1
-            fi
-
-            local url="https://github.com/restic/restic/releases/download/v${version}/restic_${version}_linux_${arch}.bz2"
-            local tmpdir=$(mktemp -d)
-            local tmp="$tmpdir/restic.bz2"
-            curl -fsSL "$url" -o "$tmp"
-            bunzip2 "$tmp"
-            mv "$tmpdir/restic" /usr/local/bin/restic
-            chmod +x /usr/local/bin/restic
-            rm -rf "$tmpdir"
-            echo "restic v${version} installed."
-            ;;
-        yq)
-            local version="4.52.2"
-            echo "yq is not installed."
-            read -r -p "Install yq v${version}? [press Enter to install, Ctrl+C to cancel] "
-            echo "Installing yq v${version}..."
-
-            local url="https://github.com/mikefarah/yq/releases/download/v${version}/yq_linux_${arch}"
-            curl -fsSL "$url" -o /usr/local/bin/yq
-            chmod +x /usr/local/bin/yq
-            echo "yq v${version} installed."
-            ;;
-    esac
-}
-
 # 加载环境变量
 load_env() {
     [[ -f "$WAY_DIR/.env" ]] && source "$WAY_DIR/.env" || true
@@ -153,7 +83,6 @@ setup_restic_env() {
     [[ -n "$secret_key" && "$secret_key" != "null" ]] && export AWS_SECRET_ACCESS_KEY="$secret_key" || true
 }
 
-check_deps
 load_env
 setup_restic_env
 

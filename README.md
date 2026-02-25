@@ -57,14 +57,13 @@
 - [restic](https://restic.net/) - 备份引擎
 - [yq](https://github.com/mikefarah/yq/) - YAML 解析
 
-首次运行时，way 会自动检测缺失的依赖并提示安装。
+首次安装时，install.sh 会自动安装 way 及其依赖（restic、yq）。
 
 ## 快速开始
 
 ```bash
-# 安装
-curl -fsSL https://github.com/shellus/way/releases/latest/download/way -o /usr/local/bin/way
-chmod +x /usr/local/bin/way
+# 安装（way + restic + yq）
+curl -fsSL https://github.com/shellus/way/releases/latest/download/install.sh | bash
 
 # way 自己的命令（不与 restic 冲突）
 way run                 # 执行备份（读取 rules.yaml 的项目和排除规则）

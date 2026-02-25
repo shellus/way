@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+WAY_REPO="shellus/way"
+RESTIC_VERSION="0.17.1"
+YQ_VERSION="4.52.2"
+
+echo "=== way installer ==="
+
+# 检测架构
+ARCH=""
+case "$(uname -m)" in
+    x86_64)  ARCH="amd64" ;;
+    aarch64) ARCH="arm64" ;;
+    *)
+        echo "Error: unsupported architecture: $(uname -m)"
+        exit 1
+        ;;
+esac
+
+echo "Architecture: $ARCH"
+
+# 安装 way
+install_way() {
+    if command -v way &>/dev/null; then
+        echo "way is already installed: $(way --version)"
+    else
+        echo "Installing way..."
+        curl -fsSL "https://github.com/$WAY_REPO/releases/latest/download/way" -o /usr/local/bin/way
+        chmod +x /usr/local/bin/way
+        echo "way installed: $(way --version)"
+    fi
+}
+
+# 安装 restic
+install_restic() {
+    if command -v restic &>/dev/null; then
+        echo "restic is already installed: $(restic version)"
+    else
+        echo "Installing restic v${RESTIC_VERSION}..."
+
+        if ! command -v bunzip2 &>/dev/null; then
+            echo "Error: bunzip2 is required. Run: apt install -y bzip2"
+            exit 1
+        fi
+
+        local url="https://github.com/restic/restic/releases/download/v${RESTIC_VERSION}/restic_${RESTIC_VERSION}_linux_${ARCH}.bz2"
+        local tmpdir=$(mktemp -d)
+        curl -fsSL "$url" -o "$tmpdir/restic.bz2"
+        bunzip2 "$tmpdir/restic.bz2"
+        mv "$tmpdir/restic" /usr/local/bin/restic
+        chmod +x /usr/local/bin/restic
+        rm -rf "$tmpdir"
+        echo "restic installed: $(restic version)"
+    fi
+}
+
+# 安装 yq
+install_yq() {
+    if command -v yq &>/dev/null; then
+        echo "yq is already installed: $(yq --version)"
+    else
+        echo "Installing yq v${YQ_VERSION}..."
+        local url="https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_${ARCH}"
+        curl -fsSL "$url" -o /usr/local/bin/yq
+        chmod +x /usr/local/bin/yq
+        echo "yq installed: $(yq --version)"
+    fi
+}
+
+install_restic
+install_yq
+install_way
+
+echo ""
+echo "=== Done ==="
+echo "Run 'way --version' to verify."
