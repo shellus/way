@@ -34,7 +34,7 @@ install_way() {
 
 # 安装 restic
 install_restic() {
-    if command -v restic &>/dev/null; then
+    if command -v restic &>/dev/null && restic version &>/dev/null; then
         echo "restic is already installed: $(restic version)"
     else
         echo "Installing restic v${RESTIC_VERSION}..."
@@ -57,7 +57,7 @@ install_restic() {
 
 # 安装 yq
 install_yq() {
-    if command -v yq &>/dev/null; then
+    if command -v yq &>/dev/null && yq --version &>/dev/null; then
         echo "yq is already installed: $(yq --version)"
     else
         echo "Installing yq v${YQ_VERSION}..."
