@@ -87,11 +87,17 @@ way --remote=oss snapshots
 
 ## 配置说明
 
-复制示例文件并填入实际值：
+配置文件默认存放在 `~/.way/`，安装后复制示例文件并填入实际值：
 
 ```bash
-cp repositories.yaml.example repositories.yaml
-cp rules.yaml.example rules.yaml
+cp ~/.way/repositories.yaml.example ~/.way/repositories.yaml
+cp ~/.way/rules.yaml.example ~/.way/rules.yaml
+```
+
+也可以通过 `WAY_DIR` 环境变量指定其他目录：
+
+```bash
+WAY_DIR=/path/to/config way snapshots
 ```
 
 ### rules.yaml

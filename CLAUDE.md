@@ -3,19 +3,30 @@
 ## 项目结构
 
 ```
-way/
-├── way.sh               # 主脚本（软链接到 /usr/local/bin/way）
-├── repositories.yaml    # 备份目的地配置
-├── rules.yaml           # 备份规则配置
-├── .env                 # 敏感凭证（不纳入版本控制）
-└── README.md            # 项目说明
+way/                         # 源码仓库
+├── way.sh                   # 主脚本（软链接到 /usr/local/bin/way）
+├── install.sh               # 安装脚本
+├── repositories.yaml.example
+├── rules.yaml.example
+└── README.md
+
+~/.way/                      # 运行时配置目录（WAY_DIR 默认值）
+├── repositories.yaml        # 备份目的地配置
+├── rules.yaml               # 备份规则配置
+└── .env                     # 敏感凭证（不纳入版本控制）
 ```
 
 ## 安装
 
 ```bash
-# 创建软链接
+# 创建软链接（开发用）
 ln -sf /root/projects/way/way.sh /usr/local/bin/way
+
+# 迁移配置到 ~/.way（首次需要）
+mkdir -p ~/.way
+cp repositories.yaml ~/.way/
+cp rules.yaml ~/.way/
+cp .env ~/.way/
 ```
 
 ## 本地测试
@@ -29,7 +40,7 @@ RESTIC_PASSWORD=test123 restic init --repo /tmp/way-backup-test
 
 ### 2. 配置使用本地仓库
 
-编辑 `repositories.yaml`，将 `default` 改为 `local`：
+编辑 `~/.way/repositories.yaml`，将 `default` 改为 `local`：
 
 ```yaml
 default: local

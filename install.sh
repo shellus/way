@@ -72,6 +72,31 @@ install_restic
 install_yq
 install_way
 
+# 初始化配置目录
+init_config() {
+    local way_dir="$HOME/.way"
+    local base_url="https://github.com/$WAY_REPO/releases/latest/download"
+
+    mkdir -p "$way_dir"
+
+    if [[ ! -f "$way_dir/repositories.yaml" ]]; then
+        curl -fsSL "$base_url/repositories.yaml.example" -o "$way_dir/repositories.yaml.example"
+        echo "Created: $way_dir/repositories.yaml.example"
+    fi
+
+    if [[ ! -f "$way_dir/rules.yaml" ]]; then
+        curl -fsSL "$base_url/rules.yaml.example" -o "$way_dir/rules.yaml.example"
+        echo "Created: $way_dir/rules.yaml.example"
+    fi
+}
+
+init_config
+
 echo ""
 echo "=== Done ==="
-echo "Run 'way --version' to verify."
+echo "Config directory: $HOME/.way"
+echo ""
+echo "Next steps:"
+echo "  cp ~/.way/repositories.yaml.example ~/.way/repositories.yaml"
+echo "  cp ~/.way/rules.yaml.example ~/.way/rules.yaml"
+echo "  # Edit the files, then run: way snapshots"

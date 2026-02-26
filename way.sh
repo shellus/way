@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WAY_VERSION="0.1.0"
-WAY_DIR="${WAY_DIR:-$(dirname "$(readlink -f "$0")")}"
+WAY_VERSION="0.2.0"
+WAY_DIR="${WAY_DIR:-$HOME/.way}"
 REMOTE="default"
 RESTIC_S3_OPTIONS=()
 
