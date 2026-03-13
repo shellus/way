@@ -55,15 +55,33 @@
 ## 依赖
 
 - [restic](https://restic.net/) - 备份引擎
-- [yq](https://github.com/mikefarah/yq/) - YAML 解析
+- Node.js >= 18（npm 安装方式）或 yq（脚本安装方式）
 
-首次安装时，install.sh 会自动安装 way 及其依赖（restic、yq）。
+npm 安装方式会自动处理依赖，脚本安装方式的 install.sh 会自动安装 restic 和 yq。
 
 ## 快速开始
+
+### 方式 1: npm 安装（推荐）
+
+```bash
+npm install -g @shellus/way
+
+# 初始化配置
+mkdir -p ~/.way
+cp $(npm root -g)/@shellus/way/repositories.yaml.example ~/.way/repositories.yaml
+cp $(npm root -g)/@shellus/way/rules.yaml.example ~/.way/rules.yaml
+```
+
+### 方式 2: 脚本安装
 
 ```bash
 # 安装（way + restic + yq）
 curl -fsSL https://github.com/shellus/way/releases/latest/download/install.sh | bash
+```
+
+### 使用
+
+```bash
 
 # way 自己的命令（不与 restic 冲突）
 way run                 # 执行备份（读取 rules.yaml 的项目和排除规则）
