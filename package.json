@@ -10,20 +10,31 @@
     "build": "tsup src/cli.ts --format esm --clean",
     "dev": "tsup src/cli.ts --format esm --watch",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "prepublishOnly": "npm run test:run && npm run build"
   },
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "repositories.yaml.example",
+    "rules.yaml.example"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/shellus/way.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["backup", "restic", "snapshot", "cron"],
+  "author": "shellus",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/shellus/way/issues"
   },
   "homepage": "https://github.com/shellus/way#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "restic": "*"
+  },
   "dependencies": {
     "commander": "^14.0.3",
     "dotenv": "^17.3.1",

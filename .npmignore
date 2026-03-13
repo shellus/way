@@ -1,0 +1,9 @@
+src/
+tests/
+docs/
+*.sh
+tsconfig.json
+vitest.config.ts
+tsup.config.ts
+.gitignore
+CLAUDE.md
