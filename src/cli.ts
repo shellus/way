@@ -27,9 +27,10 @@ program
   .command('gc')
   .description('清理旧快照')
   .allowUnknownOption()
-  .action(async (options, command) => {
-    const remote = command.parent.opts().remote
-    const extraArgs = command.args
+  .allowExcessArguments()
+  .action(async function() {
+    const remote = this.parent.opts().remote
+    const extraArgs = this.parent.args.slice(1)
     await gc({ remote, extraArgs })
   })
 
@@ -55,13 +56,15 @@ program
   .command('*', { isDefault: true })
   .description('透传给 restic')
   .allowUnknownOption()
-  .action(async (command, options, cmd) => {
-    const remote = cmd.parent.opts().remote
+  .allowExcessArguments()
+  .action(async function(name) {
+    const remote = this.parent.opts().remote
     const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
     const config = loadConfig(wayDir, remote)
     const env = buildResticEnv(config.repository)
     const s3Options = buildS3Options(config.repository)
-    await execRestic(cmd.args, env, s3Options)
+    const args = this.parent.args
+    await execRestic(args, env, s3Options)
   })
 
 program.parse()
