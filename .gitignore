@@ -10,3 +10,7 @@ README.local.md
 
 # 待办事项
 todo.md
+
+# TypeScript
+node_modules/
+dist/
