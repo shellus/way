@@ -9,7 +9,7 @@ const program = new Command()
 
 program
   .name('way')
-  .version('0.3.0')
+  .version('0.3.1')
   .description('策略备份工具')
   .option('--remote <name>', '指定仓库', 'default')
 

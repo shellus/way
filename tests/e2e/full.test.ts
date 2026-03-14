@@ -52,7 +52,7 @@ retention:
 
   it('way --version', () => {
     const output = execSync(`${wayBin} --version`, { encoding: 'utf8' })
-    expect(output.trim()).toBe('0.3.0')
+    expect(output.trim()).toBe('0.3.1')
   })
 
   it('way run 执行备份', () => {
