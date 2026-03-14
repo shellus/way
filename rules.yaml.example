@@ -4,14 +4,13 @@
 
 # Uptime Kuma 通知（备份完成后推送状态）
 uptime_kuma:
-  push_url: "${UPTIME_KUMA_PUSH_URL}"  # 支持环境变量
+  push_url: "https://uptime.example.com/api/push/xxxxx"
 
-# 备份时间 (cron格式，留空则不执行)
+# 备份时间（cron 格式，会自动转换为 systemd OnCalendar）
 schedule:
   backup:
-    - "0 12 * * *"   # 每天中午
-    - "0 18 * * *"   # 每天傍晚
-  prune: "0 4 * * 0" # 每周日凌晨4点清理旧快照
+    - "0 12 * * *"   # 每天中午 12:00
+  prune: "0 4 * * 0" # 每周日凌晨 4:00 清理
   check: ""          # 完整性检查，留空不执行
 
 # 快照保留策略

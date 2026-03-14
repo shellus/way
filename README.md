@@ -4,6 +4,12 @@
 
 推荐在所有地方使用策略备份：开发环境、个人电脑、生产服务器。
 
+## 版本说明
+
+- **v0.4.0+**: TypeScript 版本，使用 systemd，凭证直接写在 YAML
+- **v0.3.x**: TypeScript 版本，使用 crontab，支持 .env
+- **v0.2.x**: Bash 版本
+
 ## 设计原理
 
 ### 1. 备份目的
@@ -40,6 +46,11 @@
 
 假设本机被入侵，攻击者不应能通过本机凭证定位或删除备份数据。
 
+**v0.4.0 安全增强**：
+- 使用 systemd 替代 crontab（避免在 crontab 留下痕迹）
+- 移除 .env 文件支持（避免被 `find .env` 发现）
+- 凭证直接写在 `~/.way/repositories.yaml`（权限 600）
+
 ### 9. 多层冗余原则
 
 单一备份链路存在单点故障风险。应在多个维度建立冗余：
@@ -55,50 +66,93 @@
 ## 依赖
 
 - [restic](https://restic.net/) - 备份引擎
-- Node.js >= 18（npm 安装方式）或 yq（脚本安装方式）
+- Node.js >= 18
 
-npm 安装方式会自动处理依赖，脚本安装方式的 install.sh 会自动安装 restic 和 yq。
-
-## 快速开始
-
-### 方式 1: npm 安装（推荐）
+## 安装
 
 ```bash
 npm install -g @shellus/way
+```
 
-# 初始化配置
+## 快速开始
+
+### 1. 初始化配置
+
+```bash
 mkdir -p ~/.way
 cp $(npm root -g)/@shellus/way/repositories.yaml.example ~/.way/repositories.yaml
 cp $(npm root -g)/@shellus/way/rules.yaml.example ~/.way/rules.yaml
 ```
 
-### 方式 2: 脚本安装
+编辑 `~/.way/repositories.yaml` 填入实际凭证，设置权限：
 
 ```bash
-# 安装（way + restic + yq）
-curl -fsSL https://github.com/shellus/way/releases/latest/download/install.sh | bash
+chmod 600 ~/.way/repositories.yaml
 ```
 
-### 使用
+### 2. 初始化 restic 仓库
 
 ```bash
+# 本地仓库
+way init
 
-# way 自己的命令（不与 restic 冲突）
+# S3 仓库（指定其他仓库）
+way --remote=s3 init
+```
+
+### 3. 配置定时备份
+
+```bash
+way systemd install
+way systemd status
+```
+
+### 4. 手动执行备份
+
+```bash
+way run              # 备份所有项目
+way run data         # 只备份 data 项目
+way snapshots        # 查看快照
+```
+
+## 命令参考
+
+```bash
+# 备份命令
 way run                 # 执行备份（读取 rules.yaml 的项目和排除规则）
 way run data            # 只备份 data 项目
 way gc                  # 按 retention 策略清理旧快照
-way cron install        # 安装定时任务
-way cron show           # 显示将要安装的 crontab
+
+# systemd 定时任务
+way systemd install     # 安装 systemd 定时任务
+way systemd show        # 显示 systemd 配置
+way systemd status      # 查看定时任务状态
+way systemd uninstall   # 卸载定时任务
 
 # 透传 restic（way 只设置环境变量）
 way snapshots           # → restic snapshots
 way restore abc123      # → restic restore abc123
 way check               # → restic check
 way stats               # → restic stats
-way prune               # → restic prune（直接透传）
 
 # 指定 repository（默认用 repositories.yaml 中的 default）
 way --remote=oss snapshots
+```
+
+## 生命周期
+
+```mermaid
+graph LR
+    A[way run] --> B[读取配置]
+    B --> C[遍历项目]
+    C --> D[执行 restic backup]
+    D --> E[推送 Uptime Kuma]
+
+    F[systemd timer] --> G[定时触发]
+    G --> A
+
+    H[way gc] --> I[restic forget]
+    I --> J[restic prune]
 ```
 
 ---
@@ -123,7 +177,7 @@ WAY_DIR=/path/to/config way snapshots
 备份规则配置，参考 [`rules.yaml`](rules.yaml)：
 
 - **projects**: 备份项目、路径、专属排除规则
-- **schedule**: 备份时间、清理任务的 cron 表达式
+- **schedule**: 备份时间（systemd timer OnCalendar 格式）
 - **retention**: 快照保留策略
 - **global_excludes**: 全局排除规则
 
@@ -142,43 +196,45 @@ restic 使用 Go 的 filepath.Match 语法：
 
 备份目的地配置，参考 [`repositories.yaml`](repositories.yaml)。
 
-### .env
-
-敏感凭证通过环境变量注入，在 `.env` 中定义：
-
-```bash
-RESTIC_PASSWORD=your-restic-password
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
-```
-
-在 `repositories.yaml` 中使用 `${VAR}` 语法引用：
+**v0.4.0 变更**：凭证直接写明文，不再支持 `${VAR}` 环境变量语法。
 
 ```yaml
-credentials:
-  password: ${RESTIC_PASSWORD}
-  access_key_id: ${AWS_ACCESS_KEY_ID}
+repositories:
+  local:
+    type: local
+    path: /backup/repo
+    credentials:
+      password: your-password  # 直接明文
 ```
 
-## 凭证离线备份
+建议设置文件权限：`chmod 600 ~/.way/repositories.yaml`
 
-`repositories.yaml` 和 `.env` 包含 restic 仓库密码和云存储凭证。这两个文件被 `.gitignore` 排除，不会进入版本控制，也不会被 way 自身备份。
+## 配置备份
 
-**如果本机不可访问且遗忘了这些凭证，所有备份数据将永久无法恢复。**
+`~/.way/` 目录包含所有配置和凭证，建议整体备份到安全位置：
 
-必须在本机之外单独保存一份：
+```bash
+# 打包配置目录
+tar czf way-config-$(date +%Y%m%d).tar.gz -C ~ .way
+
+# 加密备份（推荐）
+gpg -c way-config-$(date +%Y%m%d).tar.gz
+```
+
+**如果本机不可访问且遗忘了配置和凭证，所有备份数据将永久无法恢复。**
+
+必须在本机之外保存 `~/.way/` 备份：
 
 - 密码管理器（推荐）
-- 加密笔记
-- 离线存储（U 盘、纸质打印）
+- 加密云存储
+- 离线存储（U 盘、纸质打印关键凭证）
 
-需要保存的信息：
+关键信息：
 
-| 项目 | 来源 |
+| 项目 | 位置 |
 |------|------|
-| restic 仓库密码 | `.env` 中的 `RESTIC_PASSWORD` |
-| S3 访问凭证 | `.env` 中的 `AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY` |
-| 仓库地址 | `repositories.yaml` 中的 `url` |
+| 备份规则 | `~/.way/rules.yaml` |
+| 仓库配置和凭证 | `~/.way/repositories.yaml` |
 
 ## 数据恢复
 
@@ -222,4 +278,10 @@ way --remote=oss restore <snapshot-id> --target /tmp/restore
 
 ## 开发
 
-参见 [CLAUDE.md](CLAUDE.md)。
+参见 [CONTRIBUTING.md](CONTRIBUTING.md) 了解：
+- 项目结构和技术栈
+- 开发环境搭建
+- 变更规范和测试要求
+- 发布流程
+
+内部开发参考：[CLAUDE.md](CLAUDE.md)

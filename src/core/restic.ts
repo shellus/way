@@ -40,5 +40,14 @@ export function buildS3Options(repo: Repository): string[] {
 }
 
 export async function execRestic(args: string[], env: Record<string, string>, s3Options: string[] = []): Promise<void> {
-  await execa('restic', [...s3Options, ...args], { env: { ...process.env, ...env }, stdio: 'inherit' })
+  try {
+    await execa('restic', [...s3Options, ...args], { env: { ...process.env, ...env }, stdio: 'inherit' })
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.error('Error: restic not found. Please install restic first.')
+      console.error('Visit: https://restic.net/')
+      process.exit(1)
+    }
+    throw error
+  }
 }

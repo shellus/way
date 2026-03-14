@@ -1,41 +1,76 @@
-# 从 Bash 版本迁移到 TypeScript 版本
+# 迁移指南
 
-## 兼容性
+## v0.3.x → v0.4.0（破坏性变更）
 
-TypeScript 版本 (v0.3.0+) 与 Bash 版本 (v0.2.0) 完全兼容：
+### 主要变更
 
-- 配置文件格式不变（repositories.yaml, rules.yaml, .env）
-- 命令行接口不变
-- 所有功能保持一致
+1. **移除 .env 文件支持**
+   - 不再支持 `${VAR}` 环境变量语法
+   - 凭证直接写在 `repositories.yaml` 中
 
-## 迁移步骤
+2. **systemd 替代 crontab**
+   - `way cron` 命令已移除
+   - 新增 `way systemd` 命令
 
-### 1. 卸载旧版本
+### 迁移步骤
 
-```bash
-rm /usr/local/bin/way
+#### 1. 更新 repositories.yaml
+
+**旧格式（v0.3.x）**：
+```yaml
+repositories:
+  local:
+    credentials:
+      password: ${RESTIC_PASSWORD}
 ```
 
-### 2. 安装新版本
-
-```bash
-npm install -g @shellus/way
+**新格式（v0.4.0）**：
+```yaml
+repositories:
+  local:
+    credentials:
+      password: test123  # 直接明文
 ```
 
-### 3. 验证
+将所有 `${VAR}` 替换为实际值（从 `.env` 文件复制）。
+
+#### 2. 设置文件权限
 
 ```bash
-way --version  # 应显示 0.3.0
-way snapshots  # 应正常工作
+chmod 600 ~/.way/repositories.yaml
 ```
 
-配置文件无需修改，直接使用。
-
-## 回滚
-
-如需回滚到 Bash 版本：
+#### 3. 删除 .env 文件
 
 ```bash
-npm uninstall -g @shellus/way
-curl -fsSL https://github.com/shellus/way/releases/download/v0.2.0/install.sh | bash
+rm ~/.way/.env
 ```
+
+#### 4. 卸载 crontab，安装 systemd
+
+```bash
+# 卸载旧的 crontab（如果有）
+crontab -l | grep -v "way backup schedule" | crontab -
+
+# 安装 systemd timer
+way systemd install
+```
+
+#### 5. 验证
+
+```bash
+way systemd status
+way run --dry-run
+```
+
+### 回滚到 v0.3.x
+
+```bash
+npm install -g @shellus/way@0.3.1
+```
+
+---
+
+## v0.2.x (Bash) → v0.3.x (TypeScript)
+
+配置文件格式完全兼容，参考旧版 MIGRATION.md。

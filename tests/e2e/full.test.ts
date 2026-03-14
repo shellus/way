@@ -18,7 +18,6 @@ describe('way E2E', () => {
     fs.writeFileSync(path.join(dataPath, 'file1.txt'), 'content1')
     fs.writeFileSync(path.join(dataPath, 'file2.txt'), 'content2')
 
-    fs.writeFileSync(path.join(testDir, '.env'), 'RESTIC_PASSWORD=test123')
     fs.writeFileSync(path.join(testDir, 'repositories.yaml'), `
 default: local
 repositories:
@@ -26,7 +25,7 @@ repositories:
     type: local
     path: ${repoPath}
     credentials:
-      password: \${RESTIC_PASSWORD}
+      password: test123
 `)
     fs.writeFileSync(path.join(testDir, 'rules.yaml'), `
 projects:
@@ -52,7 +51,7 @@ retention:
 
   it('way --version', () => {
     const output = execSync(`${wayBin} --version`, { encoding: 'utf8' })
-    expect(output.trim()).toBe('0.3.1')
+    expect(output.trim()).toBe('0.4.0')
   })
 
   it('way run 执行备份', () => {
@@ -70,8 +69,9 @@ retention:
     execSync(`WAY_DIR=${testDir} ${wayBin} gc --dry-run`, { stdio: 'inherit' })
   })
 
-  it('way cron show 显示定时任务', () => {
-    const output = execSync(`WAY_DIR=${testDir} ${wayBin} cron show`, { encoding: 'utf8' })
-    expect(output).toContain('way backup schedule')
+  it('way systemd show 显示 systemd 配置', () => {
+    const output = execSync(`WAY_DIR=${testDir} ${wayBin} systemd show`, { encoding: 'utf8' })
+    expect(output).toContain('way-backup.service')
+    expect(output).toContain('way-backup.timer')
   })
 })

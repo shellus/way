@@ -4,29 +4,24 @@
 
 ```
 way/                         # 源码仓库
-├── way.sh                   # 主脚本（软链接到 /usr/local/bin/way）
-├── install.sh               # 安装脚本
+├── src/
+│   ├── cli.ts              # CLI 入口
+│   ├── commands/           # 命令实现
+│   │   ├── run.ts
+│   │   ├── gc.ts
+│   │   └── systemd.ts
+│   ├── core/               # 核心模块
+│   │   ├── config.ts
+│   │   └── restic.ts
+│   └── types.ts
+├── tests/
 ├── repositories.yaml.example
 ├── rules.yaml.example
 └── README.md
 
 ~/.way/                      # 运行时配置目录（WAY_DIR 默认值）
-├── repositories.yaml        # 备份目的地配置
-├── rules.yaml               # 备份规则配置
-└── .env                     # 敏感凭证（不纳入版本控制）
-```
-
-## 安装
-
-```bash
-# 创建软链接（开发用）
-ln -sf /root/projects/way/way.sh /usr/local/bin/way
-
-# 迁移配置到 ~/.way（首次需要）
-mkdir -p ~/.way
-cp repositories.yaml ~/.way/
-cp rules.yaml ~/.way/
-cp .env ~/.way/
+├── repositories.yaml        # 备份目的地配置（包含凭证明文）
+└── rules.yaml               # 备份规则配置
 ```
 
 ## 本地测试
@@ -44,25 +39,32 @@ RESTIC_PASSWORD=test123 restic init --repo /tmp/way-backup-test
 
 ```yaml
 default: local
+repositories:
+  local:
+    type: local
+    path: /tmp/way-backup-test
+    credentials:
+      password: test123
 ```
 
 ### 3. 测试命令
 
 ```bash
+npm run build
 way snapshots              # 透传测试
 way run --dry-run          # 备份测试（不实际执行）
 way gc --dry-run           # 清理测试
-way cron show              # 显示 cron 条目
+way systemd show           # 显示 systemd 配置
 way env                    # 显示所有环境变量
 ```
 
-## 脚本架构
+## 架构
 
 ```
 way [--remote=name] <command> [args...]
      │                │         │
      │                │         └── 透传给 restic 或自有命令
-     │                └── run/gc/cron/env 或 restic 命令
+     │                └── run/gc/systemd/env 或 restic 命令
      └── 选择仓库（默认读取 repositories.yaml 的 default）
 ```
 
@@ -72,21 +74,9 @@ way [--remote=name] <command> [args...]
 |------|----------|
 | `run` | `cmd_run()` - 按 rules.yaml 执行备份，完成后推送 Uptime Kuma 通知 |
 | `gc` | `cmd_gc()` - 按 retention 策略清理 |
-| `cron` | `cmd_cron()` - 管理定时任务 |
+| `systemd` | `cmd_systemd()` - 管理 systemd 定时任务 |
 | `env` | `cmd_env()` - 显示所有环境变量 |
 | 其他 | 透传给 `restic` |
-
-### 环境变量
-
-1. 加载 `$WAY_DIR/.env`（如存在）
-2. 读取 yaml 配置，`${VAR}` 语法会展开为环境变量值
-3. 设置 `RESTIC_REPOSITORY`、`RESTIC_PASSWORD` 等
-
-**`expand_env()` 函数**：通用的 `${VAR}` 展开函数，目前用于：
-- `repositories.yaml` 中的凭证字段
-- `rules.yaml` 中的 `uptime_kuma.push_url`
-
-如需让更多字段支持环境变量，调用 `expand_env "$(yq ...)"` 即可。
 
 ### Uptime Kuma 通知
 
@@ -98,28 +88,8 @@ way [--remote=name] <command> [args...]
 | `msg` | `Succeeded: N, Failed: M` |
 | `ping` | 备份总耗时（毫秒） |
 
-## 注意事项
+## 安全设计（v0.4.0）
 
-### set -euo pipefail 兼容性
-
-脚本使用严格模式，条件表达式需要注意：
-
-```bash
-# 错误 - 条件失败会导致脚本退出
-[[ -f "$file" ]] && source "$file"
-
-# 正确 - 添加 || true 防止退出
-[[ -f "$file" ]] && source "$file" || true
-```
-
-### 参数解析
-
-`way run` 的参数解析规则：
-- 第一个非 `--` 开头的参数是项目名
-- 所有 `--` 开头的参数透传给 restic
-
-```bash
-way run --dry-run          # 备份所有项目
-way run data --dry-run     # 只备份 data 项目
-way run --dry-run data     # 同上
-```
+1. **移除 .env 文件**：避免被 `find .env` 发现
+2. **systemd 替代 crontab**：避免在 crontab 留下痕迹
+3. **凭证明文存储**：直接写在 `repositories.yaml`，设置权限 600
