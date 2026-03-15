@@ -72,7 +72,7 @@ WantedBy=timers.target
     execSync('systemctl --user start way-backup.timer')
 
     console.log('Systemd timer installed and started')
-    execSync('systemctl --user status way-backup.timer', { stdio: 'inherit' })
+    execSync('systemctl --user --no-pager status way-backup.timer', { stdio: 'inherit' })
   }
 
   if (options.action === 'uninstall') {
@@ -91,6 +91,6 @@ WantedBy=timers.target
   }
 
   if (options.action === 'status') {
-    execSync('systemctl --user status way-backup.timer', { stdio: 'inherit' })
+    execSync('systemctl --user --no-pager status way-backup.timer', { stdio: 'inherit' })
   }
 }
