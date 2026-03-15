@@ -26,13 +26,16 @@ export async function systemd(options: SystemdOptions): Promise<void> {
   const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
   const config = loadConfig(wayDir, options.remote)
 
+  // 动态获取 way 命令路径
+  const wayPath = execSync('which way', { encoding: 'utf-8' }).trim()
+
   const serviceContent = `[Unit]
 Description=Way Backup Service
 After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/way run
+ExecStart=${wayPath} run
 Environment="WAY_DIR=${wayDir}"
 `
 
