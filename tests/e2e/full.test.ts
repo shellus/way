@@ -53,7 +53,7 @@ global_excludes:
 
   it('way --version', () => {
     const output = execSync(`${wayBin} --version`, { encoding: 'utf8' })
-    expect(output.trim()).toBe('0.5.0')
+    expect(output.trim()).toBe('0.5.1')
   })
 
   it('way run 执行备份', () => {
