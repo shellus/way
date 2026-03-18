@@ -3,19 +3,21 @@ import { buildResticEnv, buildS3Options, execRestic } from '../core/restic'
 
 export interface GcOptions {
   remote: string
-  extraArgs?: string[]
+  dryRun?: boolean
 }
 
 export async function gc(options: GcOptions): Promise<void> {
   const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
   const config = loadConfig(wayDir, options.remote)
 
-  const keepDaily = config.rules.retention?.keep_daily || 7
-  const keepWeekly = config.rules.retention?.keep_weekly || 4
-  const keepMonthly = config.rules.retention?.keep_monthly || 6
+  const retention = config.rules.defaults?.retention || {}
+  const keepDaily = retention.keep_daily || 7
+  const keepWeekly = retention.keep_weekly || 4
+  const keepMonthly = retention.keep_monthly || 6
+  const keepYearly = retention.keep_yearly
 
   console.log('=== Cleaning snapshots ===')
-  console.log(`Policy: daily=${keepDaily}, weekly=${keepWeekly}, monthly=${keepMonthly}`)
+  console.log(`Policy: daily=${keepDaily}, weekly=${keepWeekly}, monthly=${keepMonthly}${keepYearly ? `, yearly=${keepYearly}` : ''}`)
 
   const env = buildResticEnv(config.repository)
   const s3Options = buildS3Options(config.repository)
@@ -28,7 +30,8 @@ export async function gc(options: GcOptions): Promise<void> {
     `--keep-monthly=${keepMonthly}`,
   ]
 
-  if (options.extraArgs) args.push(...options.extraArgs)
+  if (keepYearly) args.push(`--keep-yearly=${keepYearly}`)
+  if (options.dryRun) args.push('--dry-run')
 
   await execRestic(args, env, s3Options)
 }

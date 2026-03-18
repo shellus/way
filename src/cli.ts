@@ -2,6 +2,7 @@ import { Command } from 'commander'
 import { run } from './commands/run'
 import { gc } from './commands/gc'
 import { systemd } from './commands/systemd'
+import { daemon } from './commands/daemon'
 import { execRestic, buildResticEnv, buildS3Options } from './core/restic'
 import { loadConfig } from './core/config'
 
@@ -9,7 +10,7 @@ const program = new Command()
 
 program
   .name('way')
-  .version('0.4.0')
+  .version('0.5.0')
   .description('策略备份工具 - 基于 restic 的策略封装')
   .option('--remote <name>', '指定仓库', 'default')
   .addHelpText('after', `
@@ -26,32 +27,22 @@ program
 `)
 
 program
-  .command('run [project]')
+  .command('run [projects...]')
   .description('执行备份')
   .allowUnknownOption()
   .allowExcessArguments()
-  .action(async (project, options, command) => {
+  .action(async (projects, options, command) => {
     const remote = command.parent.opts().remote
-    const allArgs = command.parent.args.slice(1)
-
-    // 如果 project 以 -- 开头，说明没有指定项目，所有参数都是 extraArgs
-    if (project?.startsWith('--')) {
-      await run({ remote, project: undefined, extraArgs: allArgs })
-    } else {
-      const extraArgs = project ? allArgs.slice(1) : allArgs
-      await run({ remote, project, extraArgs })
-    }
+    await run({ remote, projects })
   })
 
 program
   .command('gc')
   .description('清理旧快照')
-  .allowUnknownOption()
-  .allowExcessArguments()
-  .action(async function() {
+  .option('--dry-run', '模拟清理（不实际删除）')
+  .action(async function(cmdOptions) {
     const remote = this.parent.opts().remote
-    const extraArgs = this.parent.args.slice(1)
-    await gc({ remote, extraArgs })
+    await gc({ remote, dryRun: cmdOptions.dryRun })
   })
 
 program
@@ -60,6 +51,14 @@ program
   .action(async (action, options, command) => {
     const remote = command.parent.opts().remote
     await systemd({ remote, action: action as 'show' | 'install' | 'uninstall' | 'status' })
+  })
+
+program
+  .command('daemon')
+  .description('启动常驻进程，按配置定时执行备份')
+  .action(async (options, command) => {
+    const remote = command.parent.opts().remote
+    await daemon({ remote })
   })
 
 program

@@ -4,7 +4,7 @@ import type { RunResult } from '../types'
 
 export interface RunOptions {
   remote: string
-  project?: string
+  projects?: string[]
   extraArgs?: string[]
 }
 
@@ -16,8 +16,8 @@ export async function run(options: RunOptions): Promise<RunResult> {
   const s3Options = buildS3Options(config.repository)
   const globalExcludes = config.rules.global_excludes || []
 
-  const projects = options.project
-    ? [options.project]
+  const projects = options.projects && options.projects.length > 0
+    ? options.projects
     : Object.keys(config.rules.projects)
 
   const succeeded: string[] = []

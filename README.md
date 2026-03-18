@@ -6,7 +6,8 @@
 
 ## 版本说明
 
-- **v0.4.0+**: TypeScript 版本，使用 systemd，凭证直接写在 YAML
+- **v0.5.0+**: daemon 模式，支持项目级调度配置
+- **v0.4.0**: TypeScript 版本，使用 systemd timer，凭证直接写在 YAML
 - **v0.3.x**: TypeScript 版本，使用 crontab，支持 .env
 - **v0.2.x**: Bash 版本
 
@@ -46,10 +47,11 @@
 
 假设本机被入侵，攻击者不应能通过本机凭证定位或删除备份数据。
 
-**v0.4.0 安全增强**：
-- 使用 systemd 替代 crontab（避免在 crontab 留下痕迹）
-- 移除 .env 文件支持（避免被 `find .env` 发现）
-- 凭证直接写在 `~/.way/repositories.yaml`（权限 600）
+**v0.5.0 架构升级**：
+- 使用 daemon 模式替代 systemd timer
+- 支持项目级 schedule 配置（不同项目不同频率）
+- 使用 node-cron 实现精确到分钟的调度
+- systemd service 管理常驻进程（自动重启）
 
 ### 9. 多层冗余原则
 
@@ -119,15 +121,20 @@ way snapshots        # 查看快照
 
 ```bash
 # 备份命令
-way run                 # 执行备份（读取 rules.yaml 的项目和排除规则）
+way run                 # 执行所有项目备份
 way run data            # 只备份 data 项目
+way run data config     # 备份多个项目
 way gc                  # 按 retention 策略清理旧快照
+way gc --dry-run        # 模拟清理（不实际删除）
 
-# systemd 定时任务
-way systemd install     # 安装 systemd 定时任务
+# daemon 模式（推荐）
+way daemon              # 启动常驻进程，按配置定时执行
+
+# systemd 管理
+way systemd install     # 安装 systemd service（运行 daemon）
 way systemd show        # 显示 systemd 配置
-way systemd status      # 查看定时任务状态
-way systemd uninstall   # 卸载定时任务
+way systemd status      # 查看服务状态
+way systemd uninstall   # 卸载服务
 
 # 透传 restic（way 只设置环境变量）
 way snapshots           # → restic snapshots
@@ -143,16 +150,14 @@ way --remote=oss snapshots
 
 ```mermaid
 graph LR
-    A[way run] --> B[读取配置]
-    B --> C[遍历项目]
-    C --> D[执行 restic backup]
-    D --> E[推送 Uptime Kuma]
+    A[way daemon] --> B[读取配置]
+    B --> C[为每个项目创建 cron 任务]
+    C --> D[node-cron 定时触发]
+    D --> E[执行 restic backup]
+    E --> F[推送 Uptime Kuma]
 
-    F[systemd timer] --> G[定时触发]
-    G --> A
-
-    H[way gc] --> I[restic forget]
-    I --> J[restic prune]
+    G[systemd service] --> H[启动 daemon]
+    H --> I[进程崩溃自动重启]
 ```
 
 ---
@@ -174,12 +179,35 @@ WAY_DIR=/path/to/config way snapshots
 
 ### rules.yaml
 
-备份规则配置，参考 [`rules.yaml`](rules.yaml)：
+备份规则配置，参考 [`rules.yaml.example`](rules.yaml.example)：
 
-- **projects**: 备份项目、路径、专属排除规则
-- **schedule**: 备份时间（systemd timer OnCalendar 格式）
-- **retention**: 快照保留策略
+- **defaults**: 全局默认配置（schedule、retention）
+- **projects**: 备份项目配置，可覆盖默认 schedule 和 retention
+- **maintenance**: 维护任务配置（prune、check）
 - **global_excludes**: 全局排除规则
+
+**项目级调度示例**：
+
+```yaml
+defaults:
+  schedule: "0 */2 * * *"  # 默认每 2 小时
+
+projects:
+  data:
+    paths: [/data]
+    # 继承默认 schedule
+
+  logs:
+    paths: [/var/log]
+    schedule: "0 3 * * *"  # 覆盖为每天凌晨 3 点
+
+  archive:
+    paths: [/archive]
+    schedule: "0 2 * * 0"  # 每周日凌晨 2 点
+    retention:
+      keep_weekly: 8
+      keep_monthly: 12
+```
 
 #### 排除规则通配符语法
 

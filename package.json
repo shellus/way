@@ -1,6 +1,6 @@
 {
   "name": "@shellus/way",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "将备份作为持续运营的项目，而非一次性任务。基于 restic 的策略封装。",
   "type": "module",
   "bin": {
@@ -43,11 +43,13 @@
   "dependencies": {
     "commander": "^14.0.3",
     "execa": "^9.6.1",
-    "js-yaml": "^4.1.1"
+    "js-yaml": "^4.1.1",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.5.0",
+    "@types/node-cron": "^3.0.11",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"

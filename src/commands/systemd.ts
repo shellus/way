@@ -8,20 +8,6 @@ export interface SystemdOptions {
   action: 'show' | 'install' | 'uninstall' | 'status'
 }
 
-function cronToSystemd(cron: string): string {
-  const parts = cron.trim().split(/\s+/)
-  if (parts.length !== 5) return 'daily'
-
-  const [minute, hour, day, month, weekday] = parts
-
-  // 简单转换：分钟 小时 * * * -> *-*-* HH:MM:00
-  if (day === '*' && month === '*' && weekday === '*') {
-    return `*-*-* ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:00`
-  }
-
-  return 'daily'
-}
-
 export async function systemd(options: SystemdOptions): Promise<void> {
   const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
   const config = loadConfig(wayDir, options.remote)
@@ -30,67 +16,56 @@ export async function systemd(options: SystemdOptions): Promise<void> {
   const wayPath = execSync('which way', { encoding: 'utf-8' }).trim()
 
   const serviceContent = `[Unit]
-Description=Way Backup Service
+Description=Way Backup Daemon
 After=network.target
 
 [Service]
-Type=oneshot
-ExecStart=${wayPath} run
+Type=simple
+ExecStart=${wayPath} daemon
+Restart=always
+RestartSec=10
 Environment="WAY_DIR=${wayDir}"
-`
-
-  const timerContent = `[Unit]
-Description=Way Backup Timer
-
-[Timer]
-OnCalendar=${cronToSystemd(config.rules.schedule?.backup?.[0] || 'daily')}
-Persistent=true
 
 [Install]
-WantedBy=timers.target
+WantedBy=default.target
 `
 
   if (options.action === 'show') {
     console.log('=== way-backup.service ===')
     console.log(serviceContent)
-    console.log('\n=== way-backup.timer ===')
-    console.log(timerContent)
     return
   }
 
   const systemdDir = `${process.env.HOME}/.config/systemd/user`
   const servicePath = path.join(systemdDir, 'way-backup.service')
-  const timerPath = path.join(systemdDir, 'way-backup.timer')
 
   if (options.action === 'install') {
     fs.mkdirSync(systemdDir, { recursive: true })
     fs.writeFileSync(servicePath, serviceContent)
-    fs.writeFileSync(timerPath, timerContent)
 
     execSync('systemctl --user daemon-reload')
-    execSync('systemctl --user enable way-backup.timer')
-    execSync('systemctl --user start way-backup.timer')
+    execSync('systemctl --user enable way-backup.service')
+    execSync('systemctl --user start way-backup.service')
 
-    console.log('Systemd timer installed and started')
-    execSync('systemctl --user --no-pager status way-backup.timer', { stdio: 'inherit' })
+    console.log('Systemd service installed and started')
+    execSync('systemctl --user --no-pager status way-backup.service', { stdio: 'inherit' })
   }
 
   if (options.action === 'uninstall') {
     try {
-      execSync('systemctl --user stop way-backup.timer', { stdio: 'ignore' })
+      execSync('systemctl --user stop way-backup.service', { stdio: 'ignore' })
     } catch {}
     try {
-      execSync('systemctl --user disable way-backup.timer', { stdio: 'ignore' })
+      execSync('systemctl --user disable way-backup.service', { stdio: 'ignore' })
     } catch {}
 
     if (fs.existsSync(servicePath)) fs.unlinkSync(servicePath)
-    if (fs.existsSync(timerPath)) fs.unlinkSync(timerPath)
 
     execSync('systemctl --user daemon-reload')
-    console.log('Systemd timer uninstalled')
+    console.log('Systemd service uninstalled')
   }
 
   if (options.action === 'status') {
-    execSync('systemctl --user --no-pager status way-backup.timer', { stdio: 'inherit' })
+    execSync('systemctl --user --no-pager status way-backup.service', { stdio: 'inherit' })
   }
 }
