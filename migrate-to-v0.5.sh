@@ -78,6 +78,40 @@ if [ -n "$OLD_PRUNE" ] || [ -n "$OLD_CHECK" ]; then
 fi
 
 echo "✓ 配置迁移完成"
+
+# 检测并升级 systemd 服务
+TIMER_FILE="$HOME/.config/systemd/user/way-backup.timer"
+SERVICE_FILE="$HOME/.config/systemd/user/way-backup.service"
+
+if systemctl --user is-active way-backup.timer &>/dev/null || [ -f "$TIMER_FILE" ]; then
+  echo ""
+  echo "检测到旧版 systemd timer，正在升级为 daemon service..."
+
+  # 停止并禁用旧 timer
+  systemctl --user stop way-backup.timer 2>/dev/null || true
+  systemctl --user disable way-backup.timer 2>/dev/null || true
+  rm -f "$TIMER_FILE"
+
+  # 停止旧 service（如果在运行）
+  systemctl --user stop way-backup.service 2>/dev/null || true
+
+  # 重新安装新版 service
+  way systemd install
+
+  echo "✓ systemd 服务已从 timer 升级为 daemon"
+elif systemctl --user is-active way-backup.service &>/dev/null || [ -f "$SERVICE_FILE" ]; then
+  echo ""
+  echo "检测到 systemd service，正在重新安装..."
+
+  # 重新安装以更新配置
+  way systemd uninstall
+  way systemd install
+
+  echo "✓ systemd 服务已更新"
+else
+  echo ""
+  echo "未检测到 systemd 服务，如需安装: way systemd install"
+fi
+
 echo ""
-echo "请检查新配置: $RULES_FILE"
-echo "如需回滚: mv $BACKUP_FILE $RULES_FILE"
+echo "如需回滚配置: mv $BACKUP_FILE $RULES_FILE"
