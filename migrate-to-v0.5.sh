@@ -80,38 +80,38 @@ fi
 echo "✓ 配置迁移完成"
 
 # 检测并升级 systemd 服务
-TIMER_FILE="$HOME/.config/systemd/user/way-backup.timer"
-SERVICE_FILE="$HOME/.config/systemd/user/way-backup.service"
+USER_TIMER="$HOME/.config/systemd/user/way-backup.timer"
+USER_SERVICE="$HOME/.config/systemd/user/way-backup.service"
+SYSTEM_SERVICE="/etc/systemd/system/way-backup.service"
 
-if systemctl --user is-active way-backup.timer &>/dev/null || [ -f "$TIMER_FILE" ]; then
+# 清理旧版 user 级别服务
+if systemctl --user is-active way-backup.timer &>/dev/null || [ -f "$USER_TIMER" ]; then
   echo ""
-  echo "检测到旧版 systemd timer，正在升级为 daemon service..."
-
-  # 停止并禁用旧 timer
+  echo "检测到旧版 user 级 systemd timer，正在清理..."
   systemctl --user stop way-backup.timer 2>/dev/null || true
   systemctl --user disable way-backup.timer 2>/dev/null || true
-  rm -f "$TIMER_FILE"
-
-  # 停止旧 service（如果在运行）
+  rm -f "$USER_TIMER"
   systemctl --user stop way-backup.service 2>/dev/null || true
-
-  # 重新安装新版 service
-  way systemd install
-
-  echo "✓ systemd 服务已从 timer 升级为 daemon"
-elif systemctl --user is-active way-backup.service &>/dev/null || [ -f "$SERVICE_FILE" ]; then
-  echo ""
-  echo "检测到 systemd service，正在重新安装..."
-
-  # 重新安装以更新配置
-  way systemd uninstall
-  way systemd install
-
-  echo "✓ systemd 服务已更新"
-else
-  echo ""
-  echo "未检测到 systemd 服务，如需安装: way systemd install"
+  systemctl --user disable way-backup.service 2>/dev/null || true
+  rm -f "$USER_SERVICE"
+  systemctl --user daemon-reload
 fi
+
+if systemctl --user is-active way-backup.service &>/dev/null || [ -f "$USER_SERVICE" ]; then
+  echo ""
+  echo "检测到旧版 user 级 systemd service，正在清理..."
+  systemctl --user stop way-backup.service 2>/dev/null || true
+  systemctl --user disable way-backup.service 2>/dev/null || true
+  rm -f "$USER_SERVICE"
+  systemctl --user daemon-reload
+fi
+
+# 安装 system 级别服务
+echo ""
+echo "安装 system 级 systemd service..."
+way systemd install
+
+echo "✓ systemd 服务已升级为 system 级别"
 
 echo ""
 echo "如需回滚配置: mv $BACKUP_FILE $RULES_FILE"

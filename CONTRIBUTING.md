@@ -362,13 +362,17 @@ projects:
 
 编辑 `~/.way/rules.yaml`：
 ```yaml
-schedule:
-  backup:
-    - "0 9 * * *"   # 每天 9:00
+defaults:
+  schedule: "0 9 * * *"   # 全局默认每天 9:00
+
+projects:
+  data:
+    schedule: "0 */4 * * *"  # 覆盖为每 4 小时
 ```
 
 重新安装：
 ```bash
+way systemd uninstall
 way systemd install
 ```
 

@@ -14,6 +14,7 @@ export async function systemd(options: SystemdOptions): Promise<void> {
 
   // 动态获取 way 命令路径
   const wayPath = execSync('which way', { encoding: 'utf-8' }).trim()
+  const currentUser = execSync('whoami', { encoding: 'utf-8' }).trim()
 
   const serviceContent = `[Unit]
 Description=Way Backup Daemon
@@ -21,13 +22,15 @@ After=network.target
 
 [Service]
 Type=simple
+User=${currentUser}
 ExecStart=${wayPath} daemon
 Restart=always
 RestartSec=10
 Environment="WAY_DIR=${wayDir}"
+Environment="HOME=${process.env.HOME}"
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
 `
 
   if (options.action === 'show') {
@@ -36,36 +39,35 @@ WantedBy=default.target
     return
   }
 
-  const systemdDir = `${process.env.HOME}/.config/systemd/user`
+  const systemdDir = '/etc/systemd/system'
   const servicePath = path.join(systemdDir, 'way-backup.service')
 
   if (options.action === 'install') {
-    fs.mkdirSync(systemdDir, { recursive: true })
     fs.writeFileSync(servicePath, serviceContent)
 
-    execSync('systemctl --user daemon-reload')
-    execSync('systemctl --user enable way-backup.service')
-    execSync('systemctl --user start way-backup.service')
+    execSync('systemctl daemon-reload')
+    execSync('systemctl enable way-backup.service')
+    execSync('systemctl start way-backup.service')
 
     console.log('Systemd service installed and started')
-    execSync('systemctl --user --no-pager status way-backup.service', { stdio: 'inherit' })
+    execSync('systemctl --no-pager status way-backup.service', { stdio: 'inherit' })
   }
 
   if (options.action === 'uninstall') {
     try {
-      execSync('systemctl --user stop way-backup.service', { stdio: 'ignore' })
+      execSync('systemctl stop way-backup.service', { stdio: 'ignore' })
     } catch {}
     try {
-      execSync('systemctl --user disable way-backup.service', { stdio: 'ignore' })
+      execSync('systemctl disable way-backup.service', { stdio: 'ignore' })
     } catch {}
 
     if (fs.existsSync(servicePath)) fs.unlinkSync(servicePath)
 
-    execSync('systemctl --user daemon-reload')
+    execSync('systemctl daemon-reload')
     console.log('Systemd service uninstalled')
   }
 
   if (options.action === 'status') {
-    execSync('systemctl --user --no-pager status way-backup.service', { stdio: 'inherit' })
+    execSync('systemctl --no-pager status way-backup.service', { stdio: 'inherit' })
   }
 }

@@ -29,11 +29,14 @@ program
 program
   .command('run [projects...]')
   .description('执行备份')
+  .option('--dry-run', '模拟备份（不实际写入）')
   .allowUnknownOption()
   .allowExcessArguments()
-  .action(async (projects, options, command) => {
-    const remote = command.parent.opts().remote
-    await run({ remote, projects })
+  .action(async function(projects) {
+    const remote = this.parent.opts().remote
+    const extraArgs = this.args.filter((a: string) => a.startsWith('-') && !['--dry-run'].includes(a))
+    if (this.opts().dryRun) extraArgs.push('--dry-run')
+    await run({ remote, projects: projects.filter((p: string) => !p.startsWith('-')), extraArgs })
   })
 
 program
