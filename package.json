@@ -16,7 +16,8 @@
   "files": [
     "dist",
     "repositories.yaml.example",
-    "rules.yaml.example"
+    "rules.yaml.example",
+    "migrate-to-v0.5.sh"
   ],
   "repository": {
     "type": "git",
