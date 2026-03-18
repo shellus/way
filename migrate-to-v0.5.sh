@@ -24,13 +24,13 @@ if ! grep -q "^schedule:" "$RULES_FILE"; then
 fi
 
 # 提取旧配置的值
-OLD_SCHEDULE=$(grep -A1 "^schedule:" "$RULES_FILE" | grep "backup:" | sed 's/.*- "\(.*\)".*/\1/' | head -1)
-OLD_PRUNE=$(grep "prune:" "$RULES_FILE" | sed 's/.*prune: "\(.*\)".*/\1/')
-OLD_CHECK=$(grep "check:" "$RULES_FILE" | sed 's/.*check: "\(.*\)".*/\1/')
+OLD_SCHEDULE=$(grep -A2 "^schedule:" "$BACKUP_FILE" | grep -A1 "backup:" | tail -1 | sed 's/.*"\(.*\)".*/\1/')
+OLD_PRUNE=$(grep -A3 "^schedule:" "$BACKUP_FILE" | grep "prune:" | sed 's/.*"\(.*\)".*/\1/')
+OLD_CHECK=$(grep -A4 "^schedule:" "$BACKUP_FILE" | grep "check:" | sed 's/.*"\(.*\)".*/\1/')
 
-KEEP_DAILY=$(grep "keep_daily:" "$RULES_FILE" | sed 's/.*keep_daily: \(.*\)/\1/')
-KEEP_WEEKLY=$(grep "keep_weekly:" "$RULES_FILE" | sed 's/.*keep_weekly: \(.*\)/\1/')
-KEEP_MONTHLY=$(grep "keep_monthly:" "$RULES_FILE" | sed 's/.*keep_monthly: \(.*\)/\1/')
+KEEP_DAILY=$(grep "keep_daily:" "$BACKUP_FILE" | sed 's/.*: \(.*\)/\1/')
+KEEP_WEEKLY=$(grep "keep_weekly:" "$BACKUP_FILE" | sed 's/.*: \(.*\)/\1/')
+KEEP_MONTHLY=$(grep "keep_monthly:" "$BACKUP_FILE" | sed 's/.*: \(.*\)/\1/')
 
 # 生成新配置
 cat > "$RULES_FILE" << EOF
