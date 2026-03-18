@@ -28,6 +28,12 @@ repositories:
       password: test123
 `)
     fs.writeFileSync(path.join(testDir, 'rules.yaml'), `
+defaults:
+  schedule: "0 */2 * * *"
+  retention:
+    keep_daily: 7
+    keep_weekly: 4
+    keep_monthly: 6
 projects:
   data:
     paths:
@@ -36,10 +42,6 @@ projects:
       - "*.log"
 global_excludes:
   - node_modules
-retention:
-  keep_daily: 7
-  keep_weekly: 4
-  keep_monthly: 6
 `)
 
     execSync(`restic init --repo ${repoPath} --password-file <(echo test123)`, { shell: '/bin/bash' })
@@ -51,7 +53,7 @@ retention:
 
   it('way --version', () => {
     const output = execSync(`${wayBin} --version`, { encoding: 'utf8' })
-    expect(output.trim()).toBe('0.4.0')
+    expect(output.trim()).toBe('0.5.0')
   })
 
   it('way run 执行备份', () => {
@@ -72,6 +74,6 @@ retention:
   it('way systemd show 显示 systemd 配置', () => {
     const output = execSync(`WAY_DIR=${testDir} ${wayBin} systemd show`, { encoding: 'utf8' })
     expect(output).toContain('way-backup.service')
-    expect(output).toContain('way-backup.timer')
+    expect(output).toContain('Way Backup Daemon')
   })
 })
