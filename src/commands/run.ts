@@ -6,6 +6,7 @@ export interface RunOptions {
   remote: string
   projects?: string[]
   extraArgs?: string[]
+  dryRun?: boolean
 }
 
 export async function run(options: RunOptions): Promise<RunResult> {
@@ -19,6 +20,9 @@ export async function run(options: RunOptions): Promise<RunResult> {
   const projects = options.projects && options.projects.length > 0
     ? options.projects
     : Object.keys(config.rules.projects)
+
+  const dryRun = options.dryRun || options.extraArgs?.includes('--dry-run') || false
+  const extraArgs = options.extraArgs?.filter((arg) => arg !== '--dry-run') || []
 
   const succeeded: string[] = []
   const failed: string[] = []
@@ -36,7 +40,8 @@ export async function run(options: RunOptions): Promise<RunResult> {
 
     try {
       const args = buildBackupArgs(projectName, project, globalExcludes)
-      if (options.extraArgs) args.push(...options.extraArgs)
+      if (dryRun) args.push('--dry-run')
+      args.push(...extraArgs)
       await execRestic(args, env, s3Options)
       succeeded.push(projectName)
     } catch (error) {
@@ -51,7 +56,7 @@ export async function run(options: RunOptions): Promise<RunResult> {
   if (succeeded.length > 0) console.log('Succeeded:', succeeded.join(', '))
   if (failed.length > 0) console.log('Failed:', failed.join(', '))
 
-  if (config.rules.uptime_kuma?.push_url) {
+  if (!dryRun && config.rules.uptime_kuma?.push_url) {
     await notifyUptimeKuma({ succeeded, failed, duration }, config.rules.uptime_kuma.push_url)
   }
 

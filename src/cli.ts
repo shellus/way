@@ -34,9 +34,9 @@ program
   .allowExcessArguments()
   .action(async function(projects) {
     const remote = this.parent.opts().remote
+    const dryRun = this.opts().dryRun
     const extraArgs = this.args.filter((a: string) => a.startsWith('-') && !['--dry-run'].includes(a))
-    if (this.opts().dryRun) extraArgs.push('--dry-run')
-    await run({ remote, projects: projects.filter((p: string) => !p.startsWith('-')), extraArgs })
+    await run({ remote, projects: projects.filter((p: string) => !p.startsWith('-')), extraArgs, dryRun })
   })
 
 program
