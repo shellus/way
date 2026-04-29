@@ -52,8 +52,9 @@ global_excludes:
   })
 
   it('way --version', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'))
     const output = execSync(`${wayBin} --version`, { encoding: 'utf8' })
-    expect(output.trim()).toBe('0.5.1')
+    expect(output.trim()).toBe(pkg.version)
   })
 
   it('way run 执行备份', () => {
