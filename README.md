@@ -67,13 +67,25 @@
 
 ## 依赖
 
-- [restic](https://restic.net/) - 备份引擎
 - Node.js >= 18
+- Linux x64 平台内置 [restic](https://restic.net/) 0.16.4，其他平台需自行安装 restic
+
+`way` 查找 restic 的顺序：
+
+1. `WAY_RESTIC_BIN` 指定的二进制
+2. Linux x64 包内置的 restic
+3. 系统 `PATH` 中的 `restic`
 
 ## 安装
 
 ```bash
 npm install -g @shellus/way
+```
+
+Linux x64 用户无需额外安装 restic。如需使用自定义 restic，可设置：
+
+```bash
+WAY_RESTIC_BIN=/usr/local/bin/restic way snapshots
 ```
 
 ## 快速开始

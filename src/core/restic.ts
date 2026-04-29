@@ -1,4 +1,5 @@
 import { execa } from 'execa'
+import { resolveResticBin } from './restic-bin'
 import type { Repository, Project } from '../types'
 
 export function buildResticEnv(repo: Repository): Record<string, string> {
@@ -41,11 +42,11 @@ export function buildS3Options(repo: Repository): string[] {
 
 export async function execRestic(args: string[], env: Record<string, string>, s3Options: string[] = []): Promise<void> {
   try {
-    await execa('restic', [...s3Options, ...args], { env: { ...process.env, ...env }, stdio: 'inherit' })
+    await execa(resolveResticBin(), [...s3Options, ...args], { env: { ...process.env, ...env }, stdio: 'inherit' })
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      console.error('Error: restic not found. Please install restic first.')
-      console.error('Visit: https://restic.net/')
+      console.error('Error: restic not found. Linux x64 packages include restic; other platforms must install it first.')
+      console.error('Set WAY_RESTIC_BIN to use a custom restic binary, or visit: https://restic.net/')
       process.exit(1)
     }
     throw error

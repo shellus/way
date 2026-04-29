@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest'
-import { buildResticEnv, buildBackupArgs } from '../../src/core/restic'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { execa } from 'execa'
+import { buildResticEnv, buildBackupArgs, execRestic } from '../../src/core/restic'
+
+vi.mock('execa', () => ({
+  execa: vi.fn().mockResolvedValue({}),
+}))
 import type { Repository, Project } from '../../src/types'
 
 describe('buildResticEnv', () => {
@@ -23,5 +28,36 @@ describe('buildBackupArgs', () => {
     expect(args).toContain('backup')
     expect(args).toContain('--tag=way:test')
     expect(args).toContain('--exclude=cache')
+  })
+})
+
+describe('execRestic', () => {
+  const originalWayResticBin = process.env.WAY_RESTIC_BIN
+
+  beforeEach(() => {
+    vi.mocked(execa).mockClear()
+  })
+
+  afterEach(() => {
+    if (originalWayResticBin === undefined) {
+      delete process.env.WAY_RESTIC_BIN
+    } else {
+      process.env.WAY_RESTIC_BIN = originalWayResticBin
+    }
+  })
+
+  it('使用解析出的 restic 二进制执行命令', async () => {
+    process.env.WAY_RESTIC_BIN = '/custom/restic'
+
+    await execRestic(['snapshots'], { RESTIC_REPOSITORY: '/repo' }, ['-o', 's3.bucket-lookup=path'])
+
+    expect(execa).toHaveBeenCalledWith(
+      '/custom/restic',
+      ['-o', 's3.bucket-lookup=path', 'snapshots'],
+      expect.objectContaining({
+        env: expect.objectContaining({ RESTIC_REPOSITORY: '/repo' }),
+        stdio: 'inherit',
+      }),
+    )
   })
 })
