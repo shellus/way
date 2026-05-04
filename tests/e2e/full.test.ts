@@ -9,6 +9,7 @@ describe('way E2E', () => {
   const repoPath = path.join(testDir, 'repo')
   const dataPath = path.join(testDir, 'data')
   const wayBin = path.join(process.cwd(), 'dist/cli.js')
+  const resticBin = path.join(process.cwd(), 'vendor/restic/linux-x64/restic')
 
   beforeAll(() => {
     execSync('npm run build', { stdio: 'inherit' })
@@ -44,7 +45,7 @@ global_excludes:
   - node_modules
 `)
 
-    execSync(`restic init --repo ${repoPath} --password-file <(echo test123)`, { shell: '/bin/bash' })
+    execSync(`${resticBin} init --repo ${repoPath} --password-file <(echo test123)`, { shell: '/bin/bash' })
   })
 
   afterAll(() => {
@@ -63,6 +64,16 @@ global_excludes:
     expect(output).toContain('way backup')
     expect(output).toContain('way restore')
     expect(output).toContain('way restic')
+    expect(output).toContain('WAY_DIR')
+    expect(output).toContain('WAY_RESTIC_BIN')
+    expect(output).toContain('way --remote=oss backup')
+  })
+
+  it('子命令帮助显示全局环境变量', () => {
+    const output = execSync(`${wayBin} backup --help`, { encoding: 'utf8' })
+    expect(output).toContain('WAY_DIR')
+    expect(output).toContain('WAY_RESTIC_BIN')
+    expect(output).toContain('way --remote=oss <command>')
   })
 
   it('way run 不再作为兼容别名', () => {

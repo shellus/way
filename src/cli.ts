@@ -20,11 +20,16 @@ program
   $ way backup data            只备份 data 项目
   $ way backup --dry-run       模拟备份（不实际写入）
   $ way restore data --target /tmp/restore --dry-run
+  $ way --remote=oss backup    使用 oss 仓库执行备份（全局选项需放在子命令前）
   $ way gc                     清理旧快照
   $ way systemd install        安装定时任务
   $ way restic snapshots       查看快照列表
   $ way restic restore abc123 --target /tmp/restore
   $ way --remote=s3 restic snapshots  使用 s3 仓库
+
+环境变量:
+  WAY_DIR=/path/to/config      指定配置目录（默认: ~/.way）
+  WAY_RESTIC_BIN=/path/restic  指定 restic 二进制，优先于内置 restic 和 PATH
 
 文档: https://github.com/shellus/way
 `)
@@ -33,10 +38,20 @@ function collectBackupArgs(command: Command): string[] {
   return command.args.filter((a: string) => a.startsWith('-') && !['--dry-run'].includes(a))
 }
 
+const commonHelpText = `
+全局用法:
+  way --remote=oss <command> ...  指定仓库（全局选项需放在子命令前）
+
+环境变量:
+  WAY_DIR=/path/to/config         指定配置目录（默认: ~/.way）
+  WAY_RESTIC_BIN=/path/restic     指定 restic 二进制，优先于内置 restic 和 PATH
+`
+
 program
   .command('backup [projects...]')
   .description('按 rules.yaml 执行备份')
   .option('--dry-run', '模拟备份（不实际写入）')
+  .addHelpText('after', commonHelpText)
   .allowUnknownOption()
   .allowExcessArguments()
   .action(async function(projects) {
@@ -55,6 +70,7 @@ program
   .option('--dry-run', '模拟恢复（不实际写入）')
   .option('--delete', '删除目标中快照不存在的文件')
   .option('-v, --verbose', '显示详细恢复计划（传递 --verbose=2 给 restic）')
+  .addHelpText('after', commonHelpText)
   .action(async function(projects, cmdOptions) {
     const remote = this.parent.opts().remote
     await restore({
@@ -73,6 +89,7 @@ program
   .command('gc')
   .description('清理旧快照')
   .option('--dry-run', '模拟清理（不实际删除）')
+  .addHelpText('after', commonHelpText)
   .action(async function(cmdOptions) {
     const remote = this.parent.opts().remote
     await gc({ remote, dryRun: cmdOptions.dryRun })
@@ -81,6 +98,7 @@ program
 program
   .command('systemd <action>')
   .description('管理 systemd 定时任务 (show|install|uninstall|status)')
+  .addHelpText('after', commonHelpText)
   .action(async (action, options, command) => {
     const remote = command.parent.opts().remote
     await systemd({ remote, action: action as 'show' | 'install' | 'uninstall' | 'status' })
@@ -89,6 +107,7 @@ program
 program
   .command('daemon')
   .description('启动常驻进程，按配置定时执行备份')
+  .addHelpText('after', commonHelpText)
   .action(async (options, command) => {
     const remote = command.parent.opts().remote
     await daemon({ remote })
@@ -97,6 +116,7 @@ program
 program
   .command('env')
   .description('显示环境变量')
+  .addHelpText('after', commonHelpText)
   .action(() => {
     const env = Object.entries(process.env).sort(([a], [b]) => a.localeCompare(b))
     for (const [key, value] of env) {
@@ -107,6 +127,7 @@ program
 program
   .command('restic [args...]')
   .description('显式透传给 restic')
+  .addHelpText('after', commonHelpText)
   .allowUnknownOption()
   .allowExcessArguments()
   .action(async function(args) {
