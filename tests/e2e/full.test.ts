@@ -57,15 +57,44 @@ global_excludes:
     expect(output.trim()).toBe(pkg.version)
   })
 
-  it('way run 执行备份', () => {
-    execSync(`WAY_DIR=${testDir} ${wayBin} run`, { stdio: 'inherit' })
-    const snapshots = execSync(`WAY_DIR=${testDir} ${wayBin} snapshots --json`, { encoding: 'utf8' })
+  it('way 不带参数显示帮助', () => {
+    const output = execSync(`${wayBin}`, { encoding: 'utf8' })
+    expect(output).toContain('Usage: way')
+    expect(output).toContain('way backup')
+    expect(output).toContain('way restore')
+    expect(output).toContain('way restic')
+  })
+
+  it('way run 不再作为兼容别名', () => {
+    expect(() => execSync(`WAY_DIR=${testDir} ${wayBin} run --dry-run`, { encoding: 'utf8', stdio: 'pipe' })).toThrow()
+  })
+
+  it('way snapshots 不再隐式透传 restic', () => {
+    expect(() => execSync(`WAY_DIR=${testDir} ${wayBin} snapshots`, { encoding: 'utf8', stdio: 'pipe' })).toThrow()
+  })
+
+  it('way backup 执行备份', () => {
+    execSync(`WAY_DIR=${testDir} ${wayBin} backup`, { stdio: 'inherit' })
+    const snapshots = execSync(`WAY_DIR=${testDir} ${wayBin} restic snapshots --json`, { encoding: 'utf8' })
     expect(snapshots).toContain('way:data')
   })
 
-  it('way snapshots 查看快照', () => {
-    const output = execSync(`WAY_DIR=${testDir} ${wayBin} snapshots`, { encoding: 'utf8' })
+
+  it('way restore 按规则预演恢复', () => {
+    const restorePath = path.join(testDir, 'restore')
+    const output = execSync(`WAY_DIR=${testDir} ${wayBin} restore data --target ${restorePath} --dry-run`, { encoding: 'utf8' })
+    expect(output).toContain('=== Restoring: data ===')
+  })
+
+  it('way restic 显式透传 restic 命令', () => {
+    const output = execSync(`WAY_DIR=${testDir} ${wayBin} restic snapshots`, { encoding: 'utf8' })
     expect(output).toContain('way:data')
+  })
+
+  it('way restic 显式透传带选项的 restore 命令', () => {
+    const restorePath = path.join(testDir, 'raw-restore')
+    const output = execSync(`WAY_DIR=${testDir} ${wayBin} restic restore latest --target ${restorePath} --dry-run`, { encoding: 'utf8' })
+    expect(output).toContain('Summary:')
   })
 
   it('way gc 清理快照', () => {

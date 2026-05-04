@@ -7,7 +7,8 @@ way/                         # 源码仓库
 ├── src/
 │   ├── cli.ts              # CLI 入口
 │   ├── commands/           # 命令实现
-│   │   ├── run.ts
+│   │   ├── backup.ts
+│   │   ├── restore.ts
 │   │   ├── gc.ts
 │   │   └── systemd.ts
 │   ├── core/               # 核心模块
@@ -51,8 +52,8 @@ repositories:
 
 ```bash
 npm run build
-way snapshots              # 透传测试
-way run --dry-run          # 备份测试（不实际执行）
+way restic snapshots       # 显式透传测试
+way backup --dry-run       # 备份测试（不实际执行）
 way gc --dry-run           # 清理测试
 way systemd show           # 显示 systemd 配置
 way env                    # 显示所有环境变量
@@ -63,8 +64,8 @@ way env                    # 显示所有环境变量
 ```
 way [--remote=name] <command> [args...]
      │                │         │
-     │                │         └── 透传给 restic 或自有命令
-     │                └── run/gc/systemd/env 或 restic 命令
+     │                │         └── backup/restore/gc/systemd/env/restic
+     │                └── restic 子命令显式透传给 restic
      └── 选择仓库（默认读取 repositories.yaml 的 default）
 ```
 
@@ -72,15 +73,16 @@ way [--remote=name] <command> [args...]
 
 | 命令 | 处理方式 |
 |------|----------|
-| `run` | `cmd_run()` - 按 rules.yaml 执行备份，完成后推送 Uptime Kuma 通知 |
-| `gc` | `cmd_gc()` - 按 retention 策略清理 |
-| `systemd` | `cmd_systemd()` - 管理 systemd 定时任务 |
-| `env` | `cmd_env()` - 显示所有环境变量 |
-| 其他 | 透传给 `restic` |
+| `backup` | `backup()` - 按 rules.yaml 执行备份，完成后推送 Uptime Kuma 通知 |
+| `restore` | `restore()` - 按 rules.yaml 恢复项目 |
+| `gc` | `gc()` - 按 retention 策略清理 |
+| `systemd` | `systemd()` - 管理 systemd 定时任务 |
+| `env` | 显示所有环境变量 |
+| `restic` | 显式透传给 `restic` |
 
 ### Uptime Kuma 通知
 
-`run` 命令完成后会推送状态到 Uptime Kuma（如配置了 `uptime_kuma.push_url`）：
+`backup` 命令完成后会推送状态到 Uptime Kuma（如配置了 `uptime_kuma.push_url`）：
 
 | 推送参数 | 值 |
 |---------|---|

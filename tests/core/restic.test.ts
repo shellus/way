@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { execa } from 'execa'
-import { buildResticEnv, buildBackupArgs, execRestic } from '../../src/core/restic'
+import { buildResticEnv, buildBackupArgs, buildRestoreArgs, execRestic } from '../../src/core/restic'
 
 vi.mock('execa', () => ({
   execa: vi.fn().mockResolvedValue({}),
@@ -28,6 +28,31 @@ describe('buildBackupArgs', () => {
     expect(args).toContain('backup')
     expect(args).toContain('--tag=way:test')
     expect(args).toContain('--exclude=cache')
+  })
+})
+
+describe('buildRestoreArgs', () => {
+  it('按项目规则构建恢复参数', () => {
+    const project: Project = { paths: ['/data', '/config'] }
+    const args = buildRestoreArgs('data', project, {
+      target: '/tmp/restore',
+      snapshot: 'latest',
+      dryRun: true,
+      delete: true,
+      verbose: true,
+    })
+
+    expect(args).toEqual([
+      'restore',
+      'latest',
+      '--tag=way:data',
+      '--target=/tmp/restore',
+      '--include=/data',
+      '--include=/config',
+      '--dry-run',
+      '--delete',
+      '--verbose=2',
+    ])
   })
 })
 

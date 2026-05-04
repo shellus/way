@@ -1,6 +1,6 @@
 import cron from 'node-cron'
 import { loadConfig } from '../core/config'
-import { run } from './run'
+import { backup } from './backup'
 import { gc } from './gc'
 
 export interface DaemonOptions {
@@ -39,7 +39,7 @@ export async function daemon(options: DaemonOptions): Promise<void> {
     cron.schedule(schedule, () => {
       executeTask(async () => {
         console.log(`[${new Date().toISOString()}] Running backup: ${name}`)
-        await run({ remote: options.remote, projects: [name] })
+        await backup({ remote: options.remote, projects: [name] })
       })
     })
 

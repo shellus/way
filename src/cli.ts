@@ -1,5 +1,6 @@
 import { Command } from 'commander'
-import { run } from './commands/run'
+import { backup } from './commands/backup'
+import { restore } from './commands/restore'
 import { gc } from './commands/gc'
 import { systemd } from './commands/systemd'
 import { daemon } from './commands/daemon'
@@ -10,33 +11,60 @@ const program = new Command()
 
 program
   .name('way')
-  .version('0.5.2')
+  .version('0.6.0')
   .description('策略备份工具 - 基于 restic 的策略封装')
   .option('--remote <name>', '指定仓库', 'default')
   .addHelpText('after', `
 示例:
-  $ way run                    执行所有项目备份
-  $ way run data               只备份 data 项目
-  $ way run --dry-run          模拟备份（不实际写入）
+  $ way backup                 执行所有项目备份
+  $ way backup data            只备份 data 项目
+  $ way backup --dry-run       模拟备份（不实际写入）
+  $ way restore data --target /tmp/restore --dry-run
   $ way gc                     清理旧快照
   $ way systemd install        安装定时任务
-  $ way snapshots              查看快照列表
-  $ way --remote=s3 snapshots  使用 s3 仓库
+  $ way restic snapshots       查看快照列表
+  $ way restic restore abc123 --target /tmp/restore
+  $ way --remote=s3 restic snapshots  使用 s3 仓库
 
 文档: https://github.com/shellus/way
 `)
 
+function collectBackupArgs(command: Command): string[] {
+  return command.args.filter((a: string) => a.startsWith('-') && !['--dry-run'].includes(a))
+}
+
 program
-  .command('run [projects...]')
-  .description('执行备份')
+  .command('backup [projects...]')
+  .description('按 rules.yaml 执行备份')
   .option('--dry-run', '模拟备份（不实际写入）')
   .allowUnknownOption()
   .allowExcessArguments()
   .action(async function(projects) {
     const remote = this.parent.opts().remote
     const dryRun = this.opts().dryRun
-    const extraArgs = this.args.filter((a: string) => a.startsWith('-') && !['--dry-run'].includes(a))
-    await run({ remote, projects: projects.filter((p: string) => !p.startsWith('-')), extraArgs, dryRun })
+    const extraArgs = collectBackupArgs(this)
+    await backup({ remote, projects: projects.filter((p: string) => !p.startsWith('-')), extraArgs, dryRun })
+  })
+
+program
+  .command('restore [projects...]')
+  .description('按 rules.yaml 恢复项目')
+  .requiredOption('--target <dir>', '恢复目标目录')
+  .option('--snapshot <snapshot>', '快照 ID 或 latest', 'latest')
+  .option('--dry-run', '模拟恢复（不实际写入）')
+  .option('--delete', '删除目标中快照不存在的文件')
+  .option('-v, --verbose', '显示详细恢复计划（传递 --verbose=2 给 restic）')
+  .action(async function(projects, cmdOptions) {
+    const remote = this.parent.opts().remote
+    await restore({
+      remote,
+      projects,
+      target: cmdOptions.target,
+      snapshot: cmdOptions.snapshot,
+      dryRun: cmdOptions.dryRun,
+      delete: cmdOptions.delete,
+      verbose: cmdOptions.verbose,
+    })
   })
 
 program
@@ -75,18 +103,22 @@ program
   })
 
 program
-  .command('*', { isDefault: true })
-  .description('透传给 restic')
+  .command('restic [args...]')
+  .description('显式透传给 restic')
   .allowUnknownOption()
   .allowExcessArguments()
-  .action(async function(name) {
+  .action(async function(args) {
     const remote = this.parent.opts().remote
     const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
     const config = loadConfig(wayDir, remote)
     const env = buildResticEnv(config.repository)
     const s3Options = buildS3Options(config.repository)
-    const args = this.parent.args
     await execRestic(args, env, s3Options)
   })
+
+if (process.argv.length <= 2) {
+  program.outputHelp()
+  process.exit(0)
+}
 
 program.parse()

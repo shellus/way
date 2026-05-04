@@ -68,7 +68,7 @@
 ## 依赖
 
 - Node.js >= 18
-- Linux x64 平台内置 [restic](https://restic.net/) 0.16.4，其他平台需自行安装 restic
+- Linux x64 平台内置 [restic](https://restic.net/) 0.18.1，其他平台需自行安装 restic
 
 `way` 查找 restic 的顺序：
 
@@ -85,7 +85,7 @@ npm install -g @shellus/way
 Linux x64 用户无需额外安装 restic。如需使用自定义 restic，可设置：
 
 ```bash
-WAY_RESTIC_BIN=/usr/local/bin/restic way snapshots
+WAY_RESTIC_BIN=/usr/local/bin/restic way restic snapshots
 ```
 
 ## 快速开始
@@ -124,18 +124,23 @@ way systemd status
 ### 4. 手动执行备份
 
 ```bash
-way run              # 备份所有项目
-way run data         # 只备份 data 项目
-way snapshots        # 查看快照
+way backup           # 备份所有项目
+way backup data      # 只备份 data 项目
+way restore data --target /tmp/restore --dry-run  # 按规则预演恢复
+way restic snapshots # 查看快照
 ```
 
 ## 命令参考
 
 ```bash
 # 备份命令
-way run                 # 执行所有项目备份
-way run data            # 只备份 data 项目
-way run data config     # 备份多个项目
+way backup              # 执行所有项目备份
+way backup data         # 只备份 data 项目
+way backup data config  # 备份多个项目
+way backup --dry-run    # 模拟备份（不实际写入）
+way restore data --target /tmp/restore              # 按规则恢复 data 项目
+way restore data --target /tmp/restore --dry-run    # 模拟恢复
+way restore data --target /tmp/restore --delete     # 删除目标中快照不存在的文件
 way gc                  # 按 retention 策略清理旧快照
 way gc --dry-run        # 模拟清理（不实际删除）
 
@@ -148,14 +153,14 @@ way systemd show        # 显示 systemd 配置
 way systemd status      # 查看服务状态
 way systemd uninstall   # 卸载服务
 
-# 透传 restic（way 只设置环境变量）
-way snapshots           # → restic snapshots
-way restore abc123      # → restic restore abc123
-way check               # → restic check
-way stats               # → restic stats
+# 显式透传 restic（way 只设置环境变量）
+way restic snapshots    # → restic snapshots
+way restic check        # → restic check
+way restic stats        # → restic stats
+way restic restore abc123 --target /tmp/restore  # → restic restore abc123 --target /tmp/restore
 
 # 指定 repository（默认用 repositories.yaml 中的 default）
-way --remote=oss snapshots
+way --remote=oss restic snapshots
 ```
 
 ## 生命周期
@@ -186,7 +191,7 @@ cp ~/.way/rules.yaml.example ~/.way/rules.yaml
 也可以通过 `WAY_DIR` 环境变量指定其他目录：
 
 ```bash
-WAY_DIR=/path/to/config way snapshots
+WAY_DIR=/path/to/config way restic snapshots
 ```
 
 ### rules.yaml
@@ -287,42 +292,68 @@ gpg -c way-config-$(date +%Y%m%d).tar.gz
 
 ## 数据恢复
 
-way 透传所有 restic 命令，恢复数据时只需通过 way 调用 restic 的恢复相关命令。way 负责设置仓库连接和认证环境变量，无需手动配置。
+way 提供两种恢复方式：
+
+1. **按规则恢复**：使用 `way restore`，根据 `rules.yaml` 中的项目路径和 `way:<project>` 标签恢复。
+2. **原始 restic 恢复**：使用 `way restic restore`，显式透传 restic 参数。
 
 ### 1. 查看快照列表
 
 ```bash
-way snapshots                    # 列出所有快照
-way snapshots --tag=way:home     # 只看 home 项目的快照
-way snapshots --tag=way:data     # 只看 data 项目的快照
+way restic snapshots                    # 列出所有快照
+way restic snapshots --tag=way:home     # 只看 home 项目的快照
+way restic snapshots --tag=way:data     # 只看 data 项目的快照
 ```
 
 ### 2. 浏览快照内容
 
 ```bash
-way ls <snapshot-id>             # 列出快照中的所有文件
-way ls <snapshot-id> /root/.ssh  # 列出快照中指定目录的文件
-way find --snapshot <id> <filename>  # 在快照中搜索文件
+way restic ls <snapshot-id>             # 列出快照中的所有文件
+way restic ls <snapshot-id> /root/.ssh  # 列出快照中指定目录的文件
+way restic find --snapshot <id> <filename>  # 在快照中搜索文件
 ```
 
-### 3. 恢复文件
+### 3. 按规则恢复项目
 
 ```bash
-# 恢复整个快照到指定目录
-way restore <snapshot-id> --target /tmp/restore
+# 恢复 data 项目的最新快照到指定目录
+way restore data --target /tmp/restore
+
+# 恢复所有项目
+way restore --target /tmp/restore
+
+# 指定快照 ID
+way restore data --snapshot abc123 --target /tmp/restore
+
+# 预演恢复，不实际写入
+way restore data --target /tmp/restore --dry-run
+
+# 让目标目录与快照一致，先 dry-run 核对删除清单
+way restore data --target /tmp/restore --delete --dry-run
+way restore data --target /tmp/restore --delete
+```
+
+`way restore` 会为项目自动添加 `--tag=way:<project>` 和项目 `paths` 对应的 `--include` 参数。
+
+### 4. 原始 restic 恢复
+
+```bash
+# 显式透传 restic restore
+way restic restore <snapshot-id> --target /tmp/restore
 
 # 只恢复特定路径
-way restore <snapshot-id> --target /tmp/restore --include /root/.ssh
+way restic restore <snapshot-id> --target /tmp/restore --include /root/.ssh
 
 # 恢复单个文件到标准输出（适合快速查看）
-way dump <snapshot-id> /root/.gitconfig
+way restic dump <snapshot-id> /root/.gitconfig
 ```
 
-### 4. 从其他仓库恢复
+### 5. 从其他仓库恢复
 
 ```bash
-way --remote=oss snapshots
-way --remote=oss restore <snapshot-id> --target /tmp/restore
+way --remote=oss restic snapshots
+way --remote=oss restore data --target /tmp/restore
+way --remote=oss restic restore <snapshot-id> --target /tmp/restore
 ```
 
 ## 开发

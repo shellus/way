@@ -32,6 +32,30 @@ export function buildBackupArgs(name: string, project: Project, globalExcludes: 
   return args
 }
 
+export interface RestoreArgsOptions {
+  target: string
+  snapshot?: string
+  dryRun?: boolean
+  delete?: boolean
+  verbose?: boolean
+}
+
+export function buildRestoreArgs(name: string, project: Project, options: RestoreArgsOptions): string[] {
+  const args = [
+    'restore',
+    options.snapshot || 'latest',
+    `--tag=way:${name}`,
+    `--target=${options.target}`,
+  ]
+
+  for (const path of project.paths) args.push(`--include=${path}`)
+  if (options.dryRun) args.push('--dry-run')
+  if (options.delete) args.push('--delete')
+  if (options.verbose) args.push('--verbose=2')
+
+  return args
+}
+
 export function buildS3Options(repo: Repository): string[] {
   const options: string[] = []
   if (repo.options?.bucket_lookup) {
