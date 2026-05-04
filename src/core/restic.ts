@@ -35,6 +35,7 @@ export function buildBackupArgs(name: string, project: Project, globalExcludes: 
 export interface RestoreArgsOptions {
   target: string
   snapshot?: string
+  host?: string
   dryRun?: boolean
   delete?: boolean
   verbose?: boolean
@@ -45,8 +46,10 @@ export function buildRestoreArgs(name: string, project: Project, options: Restor
     'restore',
     options.snapshot || 'latest',
     `--tag=way:${name}`,
-    `--target=${options.target}`,
   ]
+
+  if (options.host) args.push(`--host=${options.host}`)
+  args.push(`--target=${options.target}`)
 
   for (const path of project.paths) args.push(`--include=${path}`)
   if (options.dryRun) args.push('--dry-run')

@@ -82,7 +82,7 @@ global_excludes:
 
   it('way restore 按规则预演恢复', () => {
     const restorePath = path.join(testDir, 'restore')
-    const output = execSync(`WAY_DIR=${testDir} ${wayBin} restore data --target ${restorePath} --dry-run`, { encoding: 'utf8' })
+    const output = execSync(`WAY_DIR=${testDir} ${wayBin} restore data --host ${os.hostname()} --target ${restorePath} --dry-run`, { encoding: 'utf8' })
     expect(output).toContain('=== Restoring: data ===')
   })
 

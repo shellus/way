@@ -7,6 +7,7 @@ export interface RestoreOptions {
   projects?: string[]
   target?: string
   snapshot?: string
+  host?: string
   dryRun?: boolean
   delete?: boolean
   verbose?: boolean
@@ -43,6 +44,7 @@ export async function restore(options: RestoreOptions): Promise<RunResult> {
       const args = buildRestoreArgs(projectName, project, {
         target: options.target,
         snapshot: options.snapshot,
+        host: options.host,
         dryRun: options.dryRun,
         delete: options.delete,
         verbose: options.verbose,

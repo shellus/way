@@ -51,6 +51,7 @@ program
   .description('按 rules.yaml 恢复项目')
   .requiredOption('--target <dir>', '恢复目标目录')
   .option('--snapshot <snapshot>', '快照 ID 或 latest', 'latest')
+  .option('--host <host>', '只恢复指定 host 的快照')
   .option('--dry-run', '模拟恢复（不实际写入）')
   .option('--delete', '删除目标中快照不存在的文件')
   .option('-v, --verbose', '显示详细恢复计划（传递 --verbose=2 给 restic）')
@@ -61,6 +62,7 @@ program
       projects,
       target: cmdOptions.target,
       snapshot: cmdOptions.snapshot,
+      host: cmdOptions.host,
       dryRun: cmdOptions.dryRun,
       delete: cmdOptions.delete,
       verbose: cmdOptions.verbose,

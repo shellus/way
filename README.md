@@ -139,7 +139,7 @@ way backup data         # 只备份 data 项目
 way backup data config  # 备份多个项目
 way backup --dry-run    # 模拟备份（不实际写入）
 way restore data --target /tmp/restore              # 按规则恢复 data 项目
-way restore data --target /tmp/restore --dry-run    # 模拟恢复
+way restore data --host old-host --target /tmp/restore --dry-run  # 从指定 host 模拟恢复
 way restore data --target /tmp/restore --delete     # 删除目标中快照不存在的文件
 way gc                  # 按 retention 策略清理旧快照
 way gc --dry-run        # 模拟清理（不实际删除）
@@ -326,14 +326,14 @@ way restore --target /tmp/restore
 way restore data --snapshot abc123 --target /tmp/restore
 
 # 预演恢复，不实际写入
-way restore data --target /tmp/restore --dry-run
+way restore data --host old-host --target /tmp/restore --dry-run
 
 # 让目标目录与快照一致，先 dry-run 核对删除清单
-way restore data --target /tmp/restore --delete --dry-run
-way restore data --target /tmp/restore --delete
+way restore data --host old-host --target /tmp/restore --delete --dry-run
+way restore data --host old-host --target /tmp/restore --delete
 ```
 
-`way restore` 会为项目自动添加 `--tag=way:<project>` 和项目 `paths` 对应的 `--include` 参数。
+`way restore` 会为项目自动添加 `--tag=way:<project>` 和项目 `paths` 对应的 `--include` 参数；传入 `--host` 时会只恢复指定 host 的快照。
 
 ### 4. 原始 restic 恢复
 

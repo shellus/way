@@ -36,11 +36,11 @@ describe('restore', () => {
   })
 
   it('按指定项目规则恢复最新快照', async () => {
-    await restore({ remote: 'local', projects: ['data'], target: '/tmp/restore' })
+    await restore({ remote: 'local', projects: ['data'], target: '/tmp/restore', host: 'old-host' })
 
     expect(execRestic).toHaveBeenCalledTimes(1)
     expect(execRestic).toHaveBeenCalledWith(
-      ['restore', 'latest', '--tag=way:data', '--target=/tmp/restore', '--include=/data'],
+      ['restore', 'latest', '--tag=way:data', '--host=old-host', '--target=/tmp/restore', '--include=/data'],
       expect.objectContaining({ RESTIC_REPOSITORY: '/tmp/repo' }),
       [],
     )

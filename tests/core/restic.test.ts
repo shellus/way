@@ -40,12 +40,14 @@ describe('buildRestoreArgs', () => {
       dryRun: true,
       delete: true,
       verbose: true,
+      host: 'old-host',
     })
 
     expect(args).toEqual([
       'restore',
       'latest',
       '--tag=way:data',
+      '--host=old-host',
       '--target=/tmp/restore',
       '--include=/data',
       '--include=/config',
