@@ -29,14 +29,14 @@ export interface Retention {
 export interface Project {
   description?: string
   paths: string[]
-  schedule?: string
+  schedule?: string | false
   retention?: Retention
   excludes?: string[]
 }
 
 export interface RulesConfig {
   defaults?: {
-    schedule?: string
+    schedule?: string | false
     retention?: Retention
   }
   uptime_kuma?: {
@@ -44,10 +44,10 @@ export interface RulesConfig {
   }
   maintenance?: {
     prune?: {
-      schedule?: string
+      schedule?: string | false
     }
     check?: {
-      schedule?: string
+      schedule?: string | false
     }
   }
   projects: Record<string, Project>

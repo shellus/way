@@ -5,11 +5,12 @@
 # 全局默认配置
 defaults:
   # schedule 使用 node-cron 语法（分 时 日 月 周）
+  # 设置为 false 表示不自动调度，只允许手动执行 way backup
   # 支持多种表达方式：
   #   "0 */2 * * *"      - 每 2 小时
   #   "0 9,15,21 * * *"  - 每天 9:00、15:00、21:00
   #   "0 9-17 * * 1-5"   - 工作日 9:00-17:00 每小时
-  schedule: "0 */2 * * *"
+  schedule: false
   retention:
     keep_daily: 7
     keep_weekly: 4
@@ -25,6 +26,7 @@ projects:
     description: 数据目录
     paths:
       - /path/to/data
+    schedule: "0 */2 * * *"  # 每 2 小时自动备份
     excludes:
       - cache
       - tmp
@@ -41,7 +43,7 @@ projects:
     description: 历史归档
     paths:
       - /archive
-    schedule: "0 2 * * 0"  # 每周日凌晨 2 点
+    schedule: false  # 只手动触发：way backup archive
     retention:
       keep_weekly: 8
       keep_monthly: 12
@@ -79,4 +81,4 @@ maintenance:
   prune:
     schedule: "0 4 * * 0"  # 每周日凌晨 4 点清理
   check:
-    schedule: ""           # 留空不执行
+    schedule: false        # 不执行

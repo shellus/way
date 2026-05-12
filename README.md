@@ -223,12 +223,12 @@ WAY_DIR=/path/to/config way restic snapshots
 
 ```yaml
 defaults:
-  schedule: "0 */2 * * *"  # 默认每 2 小时
+  schedule: false  # 默认不自动调度
 
 projects:
   data:
     paths: [/data]
-    # 继承默认 schedule
+    schedule: "0 */2 * * *"  # 每 2 小时
 
   logs:
     paths: [/var/log]
@@ -236,7 +236,7 @@ projects:
 
   archive:
     paths: [/archive]
-    schedule: "0 2 * * 0"  # 每周日凌晨 2 点
+    schedule: false  # 只手动触发：way backup archive
     retention:
       keep_weekly: 8
       keep_monthly: 12
@@ -244,12 +244,15 @@ projects:
 
 **schedule 语法**（node-cron 格式）：
 
+`schedule` 支持 node-cron 字符串或 `false`。`false` 表示不创建自动调度任务，只能通过 `way backup <project>` 或 `way backup` 手动触发。项目未设置 `schedule` 时继承 `defaults.schedule`；如果全局和项目都未设置，则不自动调度。
+
 | 格式 | 说明 | 示例 |
 |------|------|------|
 | `"0 */2 * * *"` | 间隔表达式 | 每 2 小时 |
 | `"0 9,15,21 * * *"` | 多个时间点（逗号） | 每天 9:00、15:00、21:00 |
 | `"0 9-17 * * 1-5"` | 时间范围 | 工作日 9:00-17:00 每小时 |
 | `"*/30 * * * *"` | 分钟间隔 | 每 30 分钟 |
+| `false` | 禁用自动调度 | 只手动备份 |
 
 #### 排除规则通配符语法
 
