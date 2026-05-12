@@ -8,6 +8,8 @@
   },
   "scripts": {
     "build": "tsup src/cli.ts --format esm --clean",
+    "build:standalone": "bun build src/cli.ts --compile --target=bun-linux-x64-baseline --outfile dist/standalone/way",
+    "package:linux-x64": "npm run build:standalone && node scripts/package-release.mjs",
     "dev": "tsup src/cli.ts --format esm --watch",
     "test": "vitest",
     "test:run": "vitest run",

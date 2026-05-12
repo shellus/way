@@ -50,6 +50,37 @@ describe('resolveResticBin', () => {
 
     expect(bin).toBe('restic')
   })
+
+  it('独立包解压后从可执行文件上级目录查找内置 restic', () => {
+    const archiveRoot = '/tmp/way-linux-x64'
+    const bundledRestic = path.join(archiveRoot, 'vendor/restic/linux-x64/restic')
+
+    const bin = resolveResticBin({
+      env: {},
+      platform: 'linux',
+      arch: 'x64',
+      packageRoot: '/not-a-package',
+      executablePath: path.join(archiveRoot, 'bin/way'),
+      existsSync: (file) => file === bundledRestic,
+    })
+
+    expect(bin).toBe(bundledRestic)
+  })
+
+  it('独立包安装到系统目录后从 lib/way 查找内置 restic', () => {
+    const bundledRestic = '/usr/local/lib/way/vendor/restic/linux-x64/restic'
+
+    const bin = resolveResticBin({
+      env: {},
+      platform: 'linux',
+      arch: 'x64',
+      packageRoot: '/not-a-package',
+      executablePath: '/usr/local/bin/way',
+      existsSync: (file) => file === bundledRestic,
+    })
+
+    expect(bin).toBe(bundledRestic)
+  })
 })
 
 describe('getBundledResticBin', () => {

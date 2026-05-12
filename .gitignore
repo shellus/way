@@ -14,3 +14,4 @@ todo.md
 # TypeScript
 node_modules/
 dist/
+release/

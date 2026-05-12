@@ -87,6 +87,7 @@ way/
 - js-yaml (YAML 解析)
 - Vitest (测试框架)
 - tsup (构建工具)
+- Bun (Linux x64 独立发行包构建)
 
 ## 开发环境
 
@@ -94,6 +95,7 @@ way/
 
 - Node.js >= 18
 - restic (备份引擎)
+- Bun (仅发布独立发行包时需要)
 
 ### 安装依赖
 
@@ -106,6 +108,9 @@ npm install
 ```bash
 # 构建
 npm run build
+
+# 构建 Linux x64 独立发行包
+npm run package:linux-x64
 
 # 监听模式
 npm run dev
@@ -238,12 +243,20 @@ git commit -m "chore: 准备发布 v0.x.x"
 git tag v0.x.x
 git push origin master --tags
 
-# 6. 发布到 npm
+# 6. GitHub Actions 自动创建 Release 资产
+# 产物: way-linux-x64.tar.gz
+
+# 7. 发布到 npm
 npm publish
 
-# 7. 验证安装
+# 8. 验证 npm 安装
 npm install -g @shellus/way@0.x.x
 way --version
+
+# 9. 验证 GitHub Release 独立发行包
+curl -LO https://github.com/shellus/way/releases/download/v0.x.x/way-linux-x64.tar.gz
+tar -xzf way-linux-x64.tar.gz
+./way-linux-x64/bin/way --version
 ```
 
 ### 3. 破坏性变更

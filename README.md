@@ -67,22 +67,51 @@
 
 ## 依赖
 
-- Node.js >= 18
+- Linux x64 独立发行包无需预装 Node.js、npm、Bun 或 restic
+- npm 安装方式需要 Node.js >= 18
 - Linux x64 平台内置 [restic](https://restic.net/) 0.18.1，其他平台需自行安装 restic
 
 `way` 查找 restic 的顺序：
 
 1. `WAY_RESTIC_BIN` 指定的二进制
-2. Linux x64 包内置的 restic
-3. 系统 `PATH` 中的 `restic`
+2. Linux x64 npm 包内置的 restic
+3. Linux x64 独立发行包旁边或安装目录中的 restic
+4. 系统 `PATH` 中的 `restic`
 
 ## 安装
+
+### Linux x64 独立发行包（推荐）
+
+GitHub Release 提供 Linux x64 独立发行包，安装机无需预装 Node.js、npm、Bun 或 restic：
+
+```bash
+VERSION=v0.x.x
+curl -LO "https://github.com/shellus/way/releases/download/${VERSION}/way-linux-x64.tar.gz"
+tar -xzf way-linux-x64.tar.gz
+cd way-linux-x64
+sudo sh install.sh
+way --version
+```
+
+默认安装位置：
+
+- `way`: `/usr/local/bin/way`
+- 内置 restic: `/usr/local/lib/way/vendor/restic/linux-x64/restic`
+- 示例配置: `/usr/local/lib/way/*.yaml.example`
+
+也可以不安装，直接在解压目录运行：
+
+```bash
+./bin/way --version
+```
+
+### npm 安装
 
 ```bash
 npm install -g @shellus/way
 ```
 
-Linux x64 用户无需额外安装 restic。如需使用自定义 restic，可设置：
+Linux x64 安装方式无需额外安装 restic。如需使用自定义 restic，可设置：
 
 ```bash
 WAY_RESTIC_BIN=/usr/local/bin/restic way restic snapshots
@@ -94,9 +123,11 @@ WAY_RESTIC_BIN=/usr/local/bin/restic way restic snapshots
 
 ```bash
 mkdir -p ~/.way
-cp $(npm root -g)/@shellus/way/repositories.yaml.example ~/.way/repositories.yaml
-cp $(npm root -g)/@shellus/way/rules.yaml.example ~/.way/rules.yaml
+cp /usr/local/lib/way/repositories.yaml.example ~/.way/repositories.yaml
+cp /usr/local/lib/way/rules.yaml.example ~/.way/rules.yaml
 ```
+
+使用 npm 安装时，示例配置位于 `$(npm root -g)/@shellus/way/`。
 
 编辑 `~/.way/repositories.yaml` 填入实际凭证，设置权限：
 
@@ -184,8 +215,8 @@ graph LR
 配置文件默认存放在 `~/.way/`，安装后复制示例文件并填入实际值：
 
 ```bash
-cp ~/.way/repositories.yaml.example ~/.way/repositories.yaml
-cp ~/.way/rules.yaml.example ~/.way/rules.yaml
+cp /usr/local/lib/way/repositories.yaml.example ~/.way/repositories.yaml
+cp /usr/local/lib/way/rules.yaml.example ~/.way/rules.yaml
 ```
 
 也可以通过 `WAY_DIR` 环境变量指定其他目录：
