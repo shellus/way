@@ -1,6 +1,6 @@
 {
   "name": "@shellus/way",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "将备份作为持续运营的项目，而非一次性任务。基于 restic 的策略封装。",
   "type": "module",
   "bin": {

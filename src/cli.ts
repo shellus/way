@@ -8,13 +8,13 @@ import { systemd } from './commands/systemd'
 import { daemon } from './commands/daemon'
 import { execRestic, buildResticEnv, buildS3Options } from './core/restic'
 import { loadConfig } from './core/config'
-import { findPackageRoot } from './core/restic-bin'
+import { resolveExampleConfigPath } from './core/restic-bin'
 
 const program = new Command()
 
 program
   .name('way')
-  .version('0.6.2')
+  .version('0.6.3')
   .description('策略备份工具 - 基于 restic 的策略封装')
   .option('--remote <name>', '指定仓库', 'default')
   .addHelpText('after', `
@@ -57,7 +57,6 @@ program
   .addHelpText('after', commonHelpText)
   .action(() => {
     const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
-    const packageRoot = findPackageRoot()
     const files = ['repositories.yaml', 'rules.yaml']
 
     fs.mkdirSync(wayDir, { recursive: true })
@@ -70,7 +69,7 @@ program
     }
 
     for (const file of files) {
-      const source = path.join(packageRoot, `${file}.example`)
+      const source = resolveExampleConfigPath(file)
       const target = path.join(wayDir, file)
       fs.copyFileSync(source, target)
       console.log(`Created ${target}`)

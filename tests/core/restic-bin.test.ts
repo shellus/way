@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import path from 'path'
-import { resolveResticBin, getBundledResticBin } from '../../src/core/restic-bin'
+import { resolveResticBin, getBundledResticBin, resolveExampleConfigPath } from '../../src/core/restic-bin'
 
 describe('resolveResticBin', () => {
   it('优先使用 WAY_RESTIC_BIN 指定的 restic', () => {
@@ -86,5 +86,37 @@ describe('resolveResticBin', () => {
 describe('getBundledResticBin', () => {
   it('返回 linux x64 内置 restic 路径', () => {
     expect(getBundledResticBin('/pkg')).toBe(path.join('/pkg', 'vendor/restic/linux-x64/restic'))
+  })
+})
+
+describe('resolveExampleConfigPath', () => {
+  it('优先使用 npm 包内示例配置', () => {
+    const configPath = resolveExampleConfigPath('repositories.yaml', {
+      packageRoot: '/pkg',
+      executablePath: '/pkg/dist/cli.js',
+      existsSync: (file) => file === '/pkg/repositories.yaml.example',
+    })
+
+    expect(configPath).toBe('/pkg/repositories.yaml.example')
+  })
+
+  it('独立包解压后从可执行文件上级目录查找示例配置', () => {
+    const configPath = resolveExampleConfigPath('repositories.yaml', {
+      packageRoot: '/$bunfs/root',
+      executablePath: '/tmp/way-linux-x64/bin/way',
+      existsSync: (file) => file === '/tmp/way-linux-x64/repositories.yaml.example',
+    })
+
+    expect(configPath).toBe('/tmp/way-linux-x64/repositories.yaml.example')
+  })
+
+  it('独立包安装到系统目录后从 lib/way 查找示例配置', () => {
+    const configPath = resolveExampleConfigPath('rules.yaml', {
+      packageRoot: '/$bunfs/root',
+      executablePath: '/usr/local/bin/way',
+      existsSync: (file) => file === '/usr/local/lib/way/rules.yaml.example',
+    })
+
+    expect(configPath).toBe('/usr/local/lib/way/rules.yaml.example')
   })
 })

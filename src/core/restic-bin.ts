@@ -28,6 +28,33 @@ export function getStandaloneResticBinCandidates(executablePath: string): string
   ]
 }
 
+export function getExampleConfigCandidates(file: string, packageRoot: string, executablePath: string): string[] {
+  const binDir = path.dirname(executablePath)
+  const archiveRoot = path.dirname(binDir)
+  const prefixRoot = path.dirname(binDir)
+
+  return [
+    path.join(packageRoot, `${file}.example`),
+    path.join(archiveRoot, `${file}.example`),
+    path.join(prefixRoot, 'lib/way', `${file}.example`),
+  ]
+}
+
+export function resolveExampleConfigPath(
+  file: string,
+  options: Pick<ResolveResticBinOptions, 'packageRoot' | 'executablePath' | 'existsSync'> = {},
+): string {
+  const packageRoot = options.packageRoot ?? findPackageRoot()
+  const executablePath = options.executablePath ?? process.execPath
+  const existsSync = options.existsSync ?? fs.existsSync
+
+  for (const candidate of getExampleConfigCandidates(file, packageRoot, executablePath)) {
+    if (existsSync(candidate)) return candidate
+  }
+
+  throw new Error(`Unable to find ${file}.example`)
+}
+
 export function findPackageRoot(startDir = path.dirname(fileURLToPath(import.meta.url))): string {
   let current = startDir
 
