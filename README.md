@@ -85,12 +85,7 @@
 GitHub Release 提供 Linux x64 独立发行包，安装机无需预装 Node.js、npm、Bun 或 restic：
 
 ```bash
-VERSION=v0.x.x
-curl -LO "https://github.com/shellus/way/releases/download/${VERSION}/way-linux-x64.tar.gz"
-tar -xzf way-linux-x64.tar.gz
-cd way-linux-x64
-sudo sh install.sh
-way --version
+curl -fsSL https://raw.githubusercontent.com/shellus/way/master/scripts/install.sh | sudo sh
 ```
 
 默认安装位置：
@@ -98,12 +93,6 @@ way --version
 - `way`: `/usr/local/bin/way`
 - 内置 restic: `/usr/local/lib/way/vendor/restic/linux-x64/restic`
 - 示例配置: `/usr/local/lib/way/*.yaml.example`
-
-也可以不安装，直接在解压目录运行：
-
-```bash
-./bin/way --version
-```
 
 ### npm 安装
 
