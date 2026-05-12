@@ -1,0 +1,7 @@
+default: local
+repositories:
+  local:
+    type: local
+    path: /tmp/test-repo
+    credentials:
+      password: test123

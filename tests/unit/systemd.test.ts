@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { resolveWayCommandPath } from '../../src/commands/systemd'
 
 function cronToSystemd(cron: string): string {
   const parts = cron.trim().split(/\s+/)
@@ -24,5 +25,44 @@ describe('cronToSystemd', () => {
     expect(cronToSystemd('0 0 1 * *')).toBe('daily')
     expect(cronToSystemd('0 0 * * 0')).toBe('daily')
     expect(cronToSystemd('invalid')).toBe('daily')
+  })
+})
+
+describe('resolveWayCommandPath', () => {
+  it('优先使用 WAY_BIN 指定的命令路径', () => {
+    const wayPath = resolveWayCommandPath({
+      env: { WAY_BIN: '/custom/way' },
+      argv: ['/usr/bin/node', '/repo/dist/cli.js', 'systemd', 'show'],
+      execPath: '/usr/bin/node',
+      whichWay: () => '/usr/local/bin/way',
+    })
+
+    expect(wayPath).toBe('/custom/way')
+  })
+
+  it('node 运行 dist/cli.js 时使用 argv 中的 CLI 路径', () => {
+    const wayPath = resolveWayCommandPath({
+      env: {},
+      argv: ['/usr/bin/node', '/repo/dist/cli.js', 'systemd', 'show'],
+      execPath: '/usr/bin/node',
+      whichWay: () => {
+        throw new Error('way not found')
+      },
+    })
+
+    expect(wayPath).toBe('/repo/dist/cli.js')
+  })
+
+  it('独立可执行文件运行时使用 execPath', () => {
+    const wayPath = resolveWayCommandPath({
+      env: {},
+      argv: ['/opt/way/bin/way', 'systemd', 'show'],
+      execPath: '/opt/way/bin/way',
+      whichWay: () => {
+        throw new Error('way not found')
+      },
+    })
+
+    expect(wayPath).toBe('/opt/way/bin/way')
   })
 })

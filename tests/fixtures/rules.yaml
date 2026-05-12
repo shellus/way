@@ -1,0 +1,10 @@
+projects:
+  test:
+    paths:
+      - /tmp/test-data
+    excludes:
+      - cache
+global_excludes:
+  - node_modules
+retention:
+  keep_daily: 7

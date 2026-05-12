@@ -8,12 +8,34 @@ export interface SystemdOptions {
   action: 'show' | 'install' | 'uninstall' | 'status'
 }
 
+export interface ResolveWayCommandPathOptions {
+  env?: NodeJS.ProcessEnv
+  argv?: string[]
+  execPath?: string
+  whichWay?: () => string
+}
+
+export function resolveWayCommandPath(options: ResolveWayCommandPathOptions = {}): string {
+  const env = options.env ?? process.env
+  const argv = options.argv ?? process.argv
+  const execPath = options.execPath ?? process.execPath
+  const whichWay = options.whichWay ?? (() => execSync('which way', { encoding: 'utf-8' }).trim())
+
+  if (env.WAY_BIN) return env.WAY_BIN
+
+  if (path.basename(execPath) === 'way') return execPath
+
+  if (argv[1] && path.isAbsolute(argv[1])) return argv[1]
+
+  return whichWay()
+}
+
 export async function systemd(options: SystemdOptions): Promise<void> {
   const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
   const config = loadConfig(wayDir, options.remote)
 
   // 动态获取 way 命令路径
-  const wayPath = execSync('which way', { encoding: 'utf-8' }).trim()
+  const wayPath = resolveWayCommandPath()
   const currentUser = execSync('whoami', { encoding: 'utf-8' }).trim()
 
   const serviceContent = `[Unit]
