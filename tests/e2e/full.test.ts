@@ -84,6 +84,33 @@ global_excludes:
     expect(() => execSync(`WAY_DIR=${testDir} ${wayBin} snapshots`, { encoding: 'utf8', stdio: 'pipe' })).toThrow()
   })
 
+  it('way init 写入示例配置', () => {
+    const initDir = path.join(testDir, 'init-command')
+    const repositoriesPath = path.join(initDir, 'repositories.yaml')
+    const rulesPath = path.join(initDir, 'rules.yaml')
+
+    fs.mkdirSync(initDir, { recursive: true })
+
+    execSync(`WAY_DIR=${initDir} ${wayBin} init`, { stdio: 'inherit' })
+
+    expect(fs.readFileSync(repositoriesPath, 'utf8')).toBe(fs.readFileSync(path.join(process.cwd(), 'repositories.yaml.example'), 'utf8'))
+    expect(fs.readFileSync(rulesPath, 'utf8')).toBe(fs.readFileSync(path.join(process.cwd(), 'rules.yaml.example'), 'utf8'))
+  })
+
+  it('way init 遇到已有配置时报错且不覆盖', () => {
+    const initDir = path.join(testDir, 'init-existing-config')
+    const repositoriesPath = path.join(initDir, 'repositories.yaml')
+    const rulesPath = path.join(initDir, 'rules.yaml')
+
+    fs.mkdirSync(initDir, { recursive: true })
+    fs.writeFileSync(repositoriesPath, 'existing repositories')
+    fs.writeFileSync(rulesPath, 'existing rules')
+
+    expect(() => execSync(`WAY_DIR=${initDir} ${wayBin} init`, { encoding: 'utf8', stdio: 'pipe' })).toThrow()
+    expect(fs.readFileSync(repositoriesPath, 'utf8')).toBe('existing repositories')
+    expect(fs.readFileSync(rulesPath, 'utf8')).toBe('existing rules')
+  })
+
   it('way backup 执行备份', () => {
     execSync(`WAY_DIR=${testDir} ${wayBin} backup`, { stdio: 'inherit' })
     const snapshots = execSync(`WAY_DIR=${testDir} ${wayBin} restic snapshots --json`, { encoding: 'utf8' })

@@ -1,4 +1,6 @@
 import { Command } from 'commander'
+import fs from 'fs'
+import path from 'path'
 import { backup } from './commands/backup'
 import { restore } from './commands/restore'
 import { gc } from './commands/gc'
@@ -6,6 +8,7 @@ import { systemd } from './commands/systemd'
 import { daemon } from './commands/daemon'
 import { execRestic, buildResticEnv, buildS3Options } from './core/restic'
 import { loadConfig } from './core/config'
+import { findPackageRoot } from './core/restic-bin'
 
 const program = new Command()
 
@@ -21,6 +24,7 @@ program
   $ way backup --dry-run       模拟备份（不实际写入）
   $ way restore data --target /tmp/restore --dry-run
   $ way --remote=oss backup    使用 oss 仓库执行备份（全局选项需放在子命令前）
+  $ way init                   初始化 way 配置文件
   $ way gc                     清理旧快照
   $ way systemd install        安装定时任务
   $ way restic snapshots       查看快照列表
@@ -46,6 +50,32 @@ const commonHelpText = `
   WAY_DIR=/path/to/config         指定配置目录（默认: ~/.way）
   WAY_RESTIC_BIN=/path/restic     指定 restic 二进制，优先于内置 restic 和 PATH
 `
+
+program
+  .command('init')
+  .description('初始化 way 配置文件')
+  .addHelpText('after', commonHelpText)
+  .action(() => {
+    const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
+    const packageRoot = findPackageRoot()
+    const files = ['repositories.yaml', 'rules.yaml']
+
+    fs.mkdirSync(wayDir, { recursive: true })
+
+    for (const file of files) {
+      const target = path.join(wayDir, file)
+      if (fs.existsSync(target)) {
+        throw new Error(`${target} already exists, aborting to avoid overwriting existing config.`)
+      }
+    }
+
+    for (const file of files) {
+      const source = path.join(packageRoot, `${file}.example`)
+      const target = path.join(wayDir, file)
+      fs.copyFileSync(source, target)
+      console.log(`Created ${target}`)
+    }
+  })
 
 program
   .command('backup [projects...]')

@@ -111,12 +111,8 @@ WAY_RESTIC_BIN=/usr/local/bin/restic way restic snapshots
 ### 1. 初始化配置
 
 ```bash
-mkdir -p ~/.way
-cp /usr/local/lib/way/repositories.yaml.example ~/.way/repositories.yaml
-cp /usr/local/lib/way/rules.yaml.example ~/.way/rules.yaml
+way init
 ```
-
-使用 npm 安装时，示例配置位于 `$(npm root -g)/@shellus/way/`。
 
 编辑 `~/.way/repositories.yaml` 填入实际凭证，设置权限：
 
@@ -128,10 +124,10 @@ chmod 600 ~/.way/repositories.yaml
 
 ```bash
 # 本地仓库
-way init
+way restic init
 
 # S3 仓库（指定其他仓库）
-way --remote=s3 init
+way --remote=s3 restic init
 ```
 
 ### 3. 配置定时备份
