@@ -14,7 +14,7 @@ const program = new Command()
 
 program
   .name('way')
-  .version('0.6.1')
+  .version('0.6.2')
   .description('策略备份工具 - 基于 restic 的策略封装')
   .option('--remote <name>', '指定仓库', 'default')
   .addHelpText('after', `
