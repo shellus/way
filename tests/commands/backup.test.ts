@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import { backup } from '../../src/commands/backup'
 import { loadConfig } from '../../src/core/config'
 import { execRestic } from '../../src/core/restic'
@@ -62,5 +65,37 @@ describe('backup', () => {
       [],
     )
     expect(globalThis.fetch).not.toHaveBeenCalled()
+  })
+
+  it('include_dirs 项目通过 files-from 备份匹配目录', async () => {
+    const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'way-include-dirs-'))
+    const dataDir = path.join(testDir, 'data')
+    fs.mkdirSync(path.join(dataDir, 'app/node_modules'), { recursive: true })
+
+    vi.mocked(loadConfig).mockReturnValue({
+      repository: {
+        type: 'local',
+        path: '/tmp/repo',
+        credentials: { password: 'test123' },
+      },
+      rules: {
+        projects: {
+          deps: { paths: [dataDir], include_dirs: ['node_modules'], schedule: false },
+        },
+        global_excludes: ['node_modules'],
+      },
+    })
+
+    try {
+      await backup({ remote: 'local', projects: ['deps'], dryRun: true })
+
+      const args = vi.mocked(execRestic).mock.calls[0][0]
+      expect(args).toContain('--tag=way:deps')
+      expect(args.some((arg) => arg.startsWith('--files-from='))).toBe(true)
+      expect(args).not.toContain(dataDir)
+      expect(args).not.toContain('--exclude=node_modules')
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true })
+    }
   })
 })

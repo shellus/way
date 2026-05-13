@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { execa } from 'execa'
-import { buildResticEnv, buildBackupArgs, buildRestoreArgs, execRestic } from '../../src/core/restic'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import { buildResticEnv, buildBackupArgs, buildRestoreArgs, execRestic, matchIncludeDir, collectIncludeDirs } from '../../src/core/restic'
 
 vi.mock('execa', () => ({
   execa: vi.fn().mockResolvedValue({}),
@@ -28,6 +31,79 @@ describe('buildBackupArgs', () => {
     expect(args).toContain('backup')
     expect(args).toContain('--tag=way:test')
     expect(args).toContain('--exclude=cache')
+  })
+
+  it('include_dirs 项目使用 files-from 列表而不是直接备份根路径', () => {
+    const project: Project = { paths: ['/data'], include_dirs: ['node_modules'] }
+    const args = buildBackupArgs('deps', project, [], '/tmp/way-include-dirs.txt')
+
+    expect(args).toEqual([
+      'backup',
+      '--tag=way:deps',
+      '--files-from=/tmp/way-include-dirs.txt',
+    ])
+  })
+
+  it('include_dirs 项目显式配置 excludes 时报错', () => {
+    const project: Project = { paths: ['/data'], include_dirs: ['node_modules'], excludes: ['cache'] }
+
+    expect(() => buildBackupArgs('deps', project, [], '/tmp/way-include-dirs.txt')).toThrow('cannot use excludes with include_dirs')
+  })
+})
+
+describe('matchIncludeDir', () => {
+  it('按目录名匹配 include_dirs', () => {
+    expect(matchIncludeDir('/data/app/node_modules', ['node_modules'])).toBe(true)
+    expect(matchIncludeDir('/data/app/vendor', ['node_modules', 'vendor'])).toBe(true)
+    expect(matchIncludeDir('/data/app/src', ['node_modules', 'vendor'])).toBe(false)
+  })
+})
+
+describe('collectIncludeDirs', () => {
+  it('匹配目录后不继续深入该目录', () => {
+    const entries: Record<string, Array<{ name: string, isDirectory: boolean }>> = {
+      '/data': [
+        { name: 'app', isDirectory: true },
+        { name: 'docs', isDirectory: true },
+      ],
+      '/data/app': [
+        { name: 'node_modules', isDirectory: true },
+        { name: 'src', isDirectory: true },
+      ],
+      '/data/app/node_modules': [
+        { name: 'deep-package', isDirectory: true },
+      ],
+      '/data/app/src': [
+        { name: 'vendor', isDirectory: true },
+      ],
+      '/data/docs': [],
+    }
+
+    const visited: string[] = []
+    const matches = collectIncludeDirs(['/data'], ['node_modules', 'vendor'], {
+      readdirSync: (dir) => {
+        visited.push(dir)
+        return entries[dir] || []
+      },
+    })
+
+    expect(matches).toEqual(['/data/app/node_modules', '/data/app/src/vendor'])
+    expect(visited).not.toContain('/data/app/node_modules')
+    expect(visited).not.toContain('/data/app/src/vendor')
+  })
+
+  it('使用真实文件系统时只扫描目录', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'way-include-real-'))
+    try {
+      fs.mkdirSync(path.join(root, 'app/node_modules'), { recursive: true })
+      fs.writeFileSync(path.join(root, 'app/file.txt'), 'content')
+
+      expect(collectIncludeDirs([root], ['node_modules'])).toEqual([
+        path.join(root, 'app/node_modules'),
+      ])
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
   })
 })
 

@@ -1,4 +1,6 @@
 import { execa } from 'execa'
+import fs from 'fs'
+import path from 'path'
 import { resolveResticBin } from './restic-bin'
 import type { Repository, Project } from '../types'
 
@@ -24,12 +26,78 @@ export function buildResticEnv(repo: Repository): Record<string, string> {
   return env
 }
 
-export function buildBackupArgs(name: string, project: Project, globalExcludes: string[]): string[] {
+export function buildBackupArgs(name: string, project: Project, globalExcludes: string[], filesFrom?: string): string[] {
   const args = ['backup', `--tag=way:${name}`]
+
+  if (project.include_dirs?.length) {
+    if (project.excludes?.length) {
+      throw new Error(`Project ${name} cannot use excludes with include_dirs`)
+    }
+    if (!filesFrom) throw new Error(`Project ${name} uses include_dirs but no files-from list was provided`)
+    args.push(`--files-from=${filesFrom}`)
+    return args
+  }
+
   const allExcludes = [...globalExcludes, ...(project.excludes || [])]
   for (const exclude of allExcludes) args.push(`--exclude=${exclude}`)
   args.push(...project.paths)
   return args
+}
+
+export interface DirEntry {
+  name: string
+  isDirectory: boolean | (() => boolean)
+}
+
+export interface CollectIncludeDirsOptions {
+  readdirSync?: (dir: string) => DirEntry[]
+}
+
+export function matchIncludeDir(dir: string, includeDirs: string[]): boolean {
+  const name = path.basename(dir)
+  return includeDirs.includes(name)
+}
+
+export function collectIncludeDirs(paths: string[], includeDirs: string[], options: CollectIncludeDirsOptions = {}): string[] {
+  const readdirSync = options.readdirSync ?? ((dir: string) => fs.readdirSync(dir, { withFileTypes: true }))
+  const matches: string[] = []
+
+  function isDirectoryEntry(entry: DirEntry): boolean {
+    return typeof entry.isDirectory === 'function' ? entry.isDirectory() : entry.isDirectory
+  }
+
+  function visit(dir: string): void {
+    let entries: DirEntry[]
+    try {
+      entries = readdirSync(dir)
+    } catch (error) {
+      console.error(`Failed to scan ${dir}:`, error)
+      return
+    }
+
+    for (const entry of entries) {
+      if (!isDirectoryEntry(entry)) continue
+
+      const child = path.join(dir, entry.name)
+      if (matchIncludeDir(child, includeDirs)) {
+        matches.push(child)
+        continue
+      }
+
+      visit(child)
+    }
+  }
+
+  for (const sourcePath of paths) {
+    const normalized = path.resolve(sourcePath)
+    if (matchIncludeDir(normalized, includeDirs)) {
+      matches.push(normalized)
+      continue
+    }
+    visit(normalized)
+  }
+
+  return matches
 }
 
 export interface RestoreArgsOptions {

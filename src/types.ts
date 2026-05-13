@@ -32,6 +32,7 @@ export interface Project {
   schedule?: string | false
   retention?: Retention
   excludes?: string[]
+  include_dirs?: string[]
 }
 
 export interface RulesConfig {

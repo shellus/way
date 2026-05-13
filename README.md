@@ -242,6 +242,40 @@ projects:
       keep_monthly: 12
 ```
 
+**手动备份匹配目录示例**：
+
+日常备份可排除可重建依赖目录，避免遍历海量小文件：
+
+```yaml
+projects:
+  data:
+    paths: [/data]
+    excludes:
+      - node_modules
+      - vendor
+    schedule: "0 */2 * * *"
+```
+
+如果需要偶尔保留依赖目录，可单独配置只手动触发的项目：
+
+```yaml
+projects:
+  data_deps:
+    paths: [/data]
+    include_dirs:
+      - node_modules
+      - vendor
+    schedule: false
+```
+
+手动执行：
+
+```bash
+way backup data_deps
+```
+
+`include_dirs` 按目录名匹配。命中目录后，`way` 会把该目录作为备份根路径写入临时 `--files-from` 列表，并停止继续扫描该目录内部，避免遍历依赖目录内的海量小文件。`include_dirs` 是专用模式，不应用 `global_excludes`，也不能同时配置项目级 `excludes`。
+
 **schedule 语法**（node-cron 格式）：
 
 `schedule` 支持 node-cron 字符串或 `false`。`false` 表示不创建自动调度任务，只能通过 `way backup <project>` 或 `way backup` 手动触发。项目未设置 `schedule` 时继承 `defaults.schedule`；如果全局和项目都未设置，则不自动调度。

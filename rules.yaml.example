@@ -50,6 +50,15 @@ projects:
       keep_yearly: 3
     excludes: []
 
+  data_deps:
+    description: 手动备份 /path/to/data 下所有依赖目录
+    paths:
+      - /path/to/data
+    include_dirs:
+      - node_modules
+      - vendor
+    schedule: false  # 只手动触发：way backup data_deps
+
 # 全局排除规则 - 适用于所有项目
 global_excludes:
   # 包管理

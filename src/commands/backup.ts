@@ -1,6 +1,9 @@
 import { loadConfig } from '../core/config'
-import { buildResticEnv, buildBackupArgs, buildS3Options, execRestic } from '../core/restic'
+import { buildResticEnv, buildBackupArgs, buildS3Options, collectIncludeDirs, execRestic } from '../core/restic'
 import type { RunResult } from '../types'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 
 export interface BackupOptions {
   remote: string
@@ -38,8 +41,22 @@ export async function backup(options: BackupOptions): Promise<RunResult> {
 
     console.log(`=== Backing up: ${projectName} ===`)
 
+    let filesFrom: string | undefined
+
     try {
-      const args = buildBackupArgs(projectName, project, globalExcludes)
+      if (project.include_dirs?.length) {
+        const includedDirs = collectIncludeDirs(project.paths, project.include_dirs)
+        if (includedDirs.length === 0) {
+          console.log(`No include_dirs matched for ${projectName}`)
+          succeeded.push(projectName)
+          continue
+        }
+
+        filesFrom = path.join(os.tmpdir(), `way-${projectName}-${Date.now()}-${process.pid}.files`)
+        fs.writeFileSync(filesFrom, `${includedDirs.join('\n')}\n`)
+      }
+
+      const args = buildBackupArgs(projectName, project, globalExcludes, filesFrom)
       if (dryRun) args.push('--dry-run')
       args.push(...extraArgs)
       await execRestic(args, env, s3Options)
@@ -47,6 +64,8 @@ export async function backup(options: BackupOptions): Promise<RunResult> {
     } catch (error) {
       console.error(`Failed to backup ${projectName}:`, error)
       failed.push(projectName)
+    } finally {
+      if (filesFrom) fs.rmSync(filesFrom, { force: true })
     }
   }
 
