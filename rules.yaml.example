@@ -55,8 +55,8 @@ projects:
     paths:
       - /path/to/data
     include_dirs:
-      - node_modules
-      - vendor
+      - www/xhj/*/node_modules
+      - www/xhj/*/vendor
     schedule: false  # 只手动触发：way backup data_deps
 
 # 全局排除规则 - 适用于所有项目

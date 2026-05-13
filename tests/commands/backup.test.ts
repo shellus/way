@@ -70,7 +70,7 @@ describe('backup', () => {
   it('include_dirs 项目通过 files-from 备份匹配目录', async () => {
     const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'way-include-dirs-'))
     const dataDir = path.join(testDir, 'data')
-    fs.mkdirSync(path.join(dataDir, 'app/node_modules'), { recursive: true })
+    fs.mkdirSync(path.join(dataDir, 'www/xhj/app/node_modules'), { recursive: true })
 
     vi.mocked(loadConfig).mockReturnValue({
       repository: {
@@ -80,7 +80,7 @@ describe('backup', () => {
       },
       rules: {
         projects: {
-          deps: { paths: [dataDir], include_dirs: ['node_modules'], schedule: false },
+          deps: { paths: [dataDir], include_dirs: ['www/xhj/*/node_modules'], schedule: false },
         },
         global_excludes: ['node_modules'],
       },

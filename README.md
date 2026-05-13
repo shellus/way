@@ -263,8 +263,8 @@ projects:
   data_deps:
     paths: [/data]
     include_dirs:
-      - node_modules
-      - vendor
+      - www/xhj/*/node_modules
+      - www/xhj/*/vendor
     schedule: false
 ```
 
@@ -274,7 +274,7 @@ projects:
 way backup data_deps
 ```
 
-`include_dirs` 按目录名匹配。命中目录后，`way` 会把该目录作为备份根路径写入临时 `--files-from` 列表，并停止继续扫描该目录内部，避免遍历依赖目录内的海量小文件。`include_dirs` 是专用模式，不应用 `global_excludes`，也不能同时配置项目级 `excludes`。
+`include_dirs` 是相对 `paths` 的目录 glob，只支持路径段中的 `*`，不支持绝对路径和 `**`。命中目录后，`way` 会把该目录作为备份根路径写入临时 `--files-from` 列表。`include_dirs` 是专用模式，不应用 `global_excludes`，也不能同时配置项目级 `excludes`。
 
 **schedule 语法**（node-cron 格式）：
 

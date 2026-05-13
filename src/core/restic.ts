@@ -53,11 +53,6 @@ export interface CollectIncludeDirsOptions {
   readdirSync?: (dir: string) => DirEntry[]
 }
 
-export function matchIncludeDir(dir: string, includeDirs: string[]): boolean {
-  const name = path.basename(dir)
-  return includeDirs.includes(name)
-}
-
 export function collectIncludeDirs(paths: string[], includeDirs: string[], options: CollectIncludeDirsOptions = {}): string[] {
   const readdirSync = options.readdirSync ?? ((dir: string) => fs.readdirSync(dir, { withFileTypes: true }))
   const matches: string[] = []
@@ -66,38 +61,63 @@ export function collectIncludeDirs(paths: string[], includeDirs: string[], optio
     return typeof entry.isDirectory === 'function' ? entry.isDirectory() : entry.isDirectory
   }
 
-  function visit(dir: string): void {
-    let entries: DirEntry[]
+  function readDirectoryEntries(dir: string): DirEntry[] {
     try {
-      entries = readdirSync(dir)
+      return readdirSync(dir)
     } catch (error) {
       console.error(`Failed to scan ${dir}:`, error)
-      return
+      return []
     }
+  }
 
-    for (const entry of entries) {
-      if (!isDirectoryEntry(entry)) continue
+  function validatePattern(pattern: string): void {
+    if (path.isAbsolute(pattern)) {
+      throw new Error(`include_dirs pattern must be relative to project paths: ${pattern}`)
+    }
+    if (pattern.split('/').includes('**')) {
+      throw new Error(`include_dirs does not support **: ${pattern}`)
+    }
+  }
 
-      const child = path.join(dir, entry.name)
-      if (matchIncludeDir(child, includeDirs)) {
-        matches.push(child)
-        continue
+  function matchSegment(name: string, pattern: string): boolean {
+    if (pattern === '*') return true
+    if (!pattern.includes('*')) return name === pattern
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*')
+    return new RegExp(`^${escaped}$`).test(name)
+  }
+
+  function expandPattern(root: string, pattern: string): string[] {
+    const segments = pattern.split('/').filter(Boolean)
+    let candidates = [path.resolve(root)]
+
+    for (const segment of segments) {
+      const nextCandidates: string[] = []
+
+      for (const candidate of candidates) {
+        const entries = readDirectoryEntries(candidate)
+        for (const entry of entries) {
+          if (!isDirectoryEntry(entry)) continue
+          if (!matchSegment(entry.name, segment)) continue
+          nextCandidates.push(path.join(candidate, entry.name))
+        }
       }
 
-      visit(child)
+      candidates = nextCandidates
+      if (candidates.length === 0) break
     }
+
+    return candidates
   }
+
+  for (const pattern of includeDirs) validatePattern(pattern)
 
   for (const sourcePath of paths) {
-    const normalized = path.resolve(sourcePath)
-    if (matchIncludeDir(normalized, includeDirs)) {
-      matches.push(normalized)
-      continue
+    for (const pattern of includeDirs) {
+      matches.push(...expandPattern(sourcePath, pattern))
     }
-    visit(normalized)
   }
 
-  return matches
+  return Array.from(new Set(matches))
 }
 
 export interface RestoreArgsOptions {
