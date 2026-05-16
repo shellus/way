@@ -28,6 +28,12 @@ export function assertValidSchedule(schedule: Schedule, label: string): void {
   }
 }
 
+function addScheduledBackup(scheduledBackups: Map<string, string[]>, schedule: string, projectName: string): void {
+  const projects = scheduledBackups.get(schedule) || []
+  projects.push(projectName)
+  scheduledBackups.set(schedule, projects)
+}
+
 async function executeTask(task: () => Promise<void>) {
   taskQueue.push(task)
   if (isRunning) return
@@ -50,7 +56,9 @@ export async function daemon(options: DaemonOptions): Promise<void> {
 
   console.log('Way daemon started')
 
-  // 为每个项目创建备份任务
+  const scheduledBackups = new Map<string, string[]>()
+
+  // 按相同 schedule 汇总项目，避免同一轮调度对同一个监控反复上报成功/失败。
   for (const [name, project] of Object.entries(config.rules.projects)) {
     const schedule = resolveProjectSchedule(project, config.rules.defaults)
     assertValidSchedule(schedule, `projects.${name}.schedule`)
@@ -60,14 +68,18 @@ export async function daemon(options: DaemonOptions): Promise<void> {
       continue
     }
 
+    addScheduledBackup(scheduledBackups, schedule, name)
+  }
+
+  for (const [schedule, projects] of scheduledBackups.entries()) {
     cron.schedule(schedule, () => {
       executeTask(async () => {
-        console.log(`[${new Date().toISOString()}] Running backup: ${name}`)
-        await backup({ remote: options.remote, projects: [name] })
+        console.log(`[${new Date().toISOString()}] Running backup: ${projects.join(', ')}`)
+        await backup({ remote: options.remote, projects })
       })
     })
 
-    console.log(`Scheduled backup for ${name}: ${schedule}`)
+    console.log(`Scheduled backup for ${projects.join(', ')}: ${schedule}`)
   }
 
   // 维护任务：prune
