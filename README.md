@@ -216,8 +216,27 @@ WAY_DIR=/path/to/config way restic snapshots
 
 - **defaults**: 全局默认配置（schedule、retention）
 - **projects**: 备份项目配置，可覆盖默认 schedule 和 retention
+- **projects.*.hooks**: 项目级备份钩子，支持 `before_backup` 和 `after_backup`
 - **maintenance**: 维护任务配置（prune、check）
 - **global_excludes**: 全局排除规则
+
+项目级钩子用于在 restic 备份前后执行一致性快照、校验或清理脚本：
+
+```yaml
+projects:
+  data:
+    paths:
+      - /path/to/data
+    hooks:
+      before_backup:
+        - run: /path/to/scripts/prepare-data-backup.sh
+          timeout: "10m"
+      after_backup:
+        - run: /path/to/scripts/verify-data-backup.sh
+          timeout: "5m"
+```
+
+`before_backup` 失败会跳过该项目的 restic 备份并标记项目失败；`after_backup` 只在 restic 成功后执行，失败同样会标记项目失败。`--dry-run` 模式只打印钩子命令，不实际执行。钩子命令按 shell 命令执行，并会收到 `WAY_PROJECT`、`WAY_REMOTE`、`WAY_DIR`、`WAY_DRY_RUN` 环境变量。
 
 **项目级调度示例**：
 

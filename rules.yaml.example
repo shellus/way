@@ -27,6 +27,13 @@ projects:
     paths:
       - /path/to/data
     schedule: "0 */2 * * *"  # 每 2 小时自动备份
+    hooks:
+      before_backup:
+        - run: /path/to/scripts/prepare-data-backup.sh
+          timeout: "10m"
+      after_backup:
+        - run: /path/to/scripts/verify-data-backup.sh
+          timeout: "5m"
     excludes:
       - cache
       - tmp

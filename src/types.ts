@@ -33,6 +33,17 @@ export interface Project {
   retention?: Retention
   excludes?: string[]
   include_dirs?: string[]
+  hooks?: ProjectHooks
+}
+
+export type ProjectHook = string | {
+  run: string
+  timeout?: string | number
+}
+
+export interface ProjectHooks {
+  before_backup?: ProjectHook[]
+  after_backup?: ProjectHook[]
 }
 
 export interface RulesConfig {

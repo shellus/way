@@ -98,4 +98,76 @@ describe('backup', () => {
       fs.rmSync(testDir, { recursive: true, force: true })
     }
   })
+
+  it('按 before_backup、restic、after_backup 的顺序执行项目钩子', async () => {
+    const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'way-hooks-'))
+    const hookLog = path.join(testDir, 'hook.log')
+    process.env.WAY_HOOK_LOG = hookLog
+
+    vi.mocked(loadConfig).mockReturnValue({
+      repository: {
+        type: 'local',
+        path: '/tmp/repo',
+        credentials: { password: 'test123' },
+      },
+      rules: {
+        projects: {
+          data: {
+            paths: ['/data'],
+            hooks: {
+              before_backup: [
+                { run: 'node -e "require(\'node:fs\').appendFileSync(process.env.WAY_HOOK_LOG, \'before:\' + process.env.WAY_PROJECT + \'\\n\')" ' },
+              ],
+              after_backup: [
+                { run: 'node -e "require(\'node:fs\').appendFileSync(process.env.WAY_HOOK_LOG, \'after:\' + process.env.WAY_PROJECT + \'\\n\')" ' },
+              ],
+            },
+          },
+        },
+        global_excludes: [],
+      },
+    })
+    vi.mocked(execRestic).mockImplementation(async () => {
+      fs.appendFileSync(hookLog, 'restic:data\n')
+    })
+
+    try {
+      const result = await backup({ remote: 'local', projects: ['data'] })
+
+      expect(result.failed).toEqual([])
+      expect(fs.readFileSync(hookLog, 'utf8')).toBe('before:data\nrestic:data\nafter:data\n')
+    } finally {
+      delete process.env.WAY_HOOK_LOG
+      fs.rmSync(testDir, { recursive: true, force: true })
+    }
+  })
+
+  it('before_backup 失败时跳过 restic 并标记项目失败', async () => {
+    vi.mocked(loadConfig).mockReturnValue({
+      repository: {
+        type: 'local',
+        path: '/tmp/repo',
+        credentials: { password: 'test123' },
+      },
+      rules: {
+        projects: {
+          data: {
+            paths: ['/data'],
+            hooks: {
+              before_backup: [
+                { run: 'node -e "process.exit(7)"' },
+              ],
+            },
+          },
+        },
+        global_excludes: [],
+      },
+    })
+
+    const result = await backup({ remote: 'local', projects: ['data'] })
+
+    expect(execRestic).not.toHaveBeenCalled()
+    expect(result.succeeded).toEqual([])
+    expect(result.failed).toEqual(['data'])
+  })
 })
