@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { execSync } from 'child_process'
+import { execSync, spawnSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
@@ -115,6 +115,30 @@ global_excludes:
     execSync(`WAY_DIR=${testDir} ${wayBin} backup`, { stdio: 'inherit' })
     const snapshots = execSync(`WAY_DIR=${testDir} ${wayBin} restic snapshots --json`, { encoding: 'utf8' })
     expect(snapshots).toContain('way:data')
+  })
+
+  it('way backup 项目失败时返回退出码 1', () => {
+    const failureDir = path.join(testDir, 'failed-backup')
+    fs.mkdirSync(failureDir, { recursive: true })
+    fs.copyFileSync(path.join(testDir, 'repositories.yaml'), path.join(failureDir, 'repositories.yaml'))
+    fs.writeFileSync(path.join(failureDir, 'rules.yaml'), `
+projects:
+  data:
+    paths:
+      - ${dataPath}
+    hooks:
+      before_backup:
+        - run: node -e "process.exit(7)"
+global_excludes: []
+`)
+
+    const result = spawnSync(wayBin, ['backup'], {
+      encoding: 'utf8',
+      env: { ...process.env, WAY_DIR: failureDir },
+    })
+
+    expect(result.status).toBe(1)
+    expect(`${result.stdout}${result.stderr}`).toContain('Failed: data')
   })
 
 

@@ -87,7 +87,13 @@ program
     const remote = this.parent.opts().remote
     const dryRun = this.opts().dryRun
     const extraArgs = collectBackupArgs(this)
-    await backup({ remote, projects: projects.filter((p: string) => !p.startsWith('-')), extraArgs, dryRun })
+    const result = await backup({
+      remote,
+      projects: projects.filter((p: string) => !p.startsWith('-')),
+      extraArgs,
+      dryRun,
+    })
+    if (result.failed.length > 0) process.exitCode = 1
   })
 
 program

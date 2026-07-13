@@ -179,6 +179,8 @@ way restic restore abc123 --target /tmp/restore  # → restic restore abc123 --t
 way --remote=oss restic snapshots
 ```
 
+`way backup` 会继续执行本轮全部目标项目并输出汇总。全部项目成功时退出码为 `0`；任一项目失败时退出码为 `1`。
+
 ## 生命周期
 
 ```mermaid
