@@ -82,13 +82,15 @@ way [--remote=name] <command> [args...]
 
 ### Uptime Kuma 通知
 
-`backup` 命令完成后会推送状态到 Uptime Kuma（如配置了 `uptime_kuma.push_url`）：
+`backup` 命令完成后会按每个项目的有效 Push 地址分组推送状态到 Uptime Kuma。项目优先使用 `projects.<name>.uptime_kuma.push_url`，未配置时回退到顶层 `uptime_kuma.push_url`；相同地址只发送一次汇总通知。
 
 | 推送参数 | 值 |
 |---------|---|
 | `status` | 全部成功 → `up`，有失败 → `down` |
 | `msg` | `Succeeded: N, Failed: M` |
-| `ping` | 备份总耗时（毫秒） |
+| `ping` | 该通知分组的项目总耗时（毫秒） |
+
+不同 Push 地址分别计算成功、失败和耗时；同组任一项目失败时该组状态为 `down`。`--dry-run` 不发送通知，通知失败不改变备份结果。
 
 ## 安全设计（v0.4.0）
 

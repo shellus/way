@@ -1,6 +1,6 @@
 import { loadConfig } from '../core/config'
 import { buildResticEnv, buildBackupArgs, buildS3Options, collectIncludeDirs, execRestic } from '../core/restic'
-import type { ProjectHook, RunResult } from '../types'
+import type { Project, ProjectHook, RunResult } from '../types'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -11,6 +11,10 @@ export interface BackupOptions {
   projects?: string[]
   extraArgs?: string[]
   dryRun?: boolean
+}
+
+interface ProjectRunResult extends RunResult {
+  pushUrl?: string
 }
 
 export async function backup(options: BackupOptions): Promise<RunResult> {
@@ -30,19 +34,30 @@ export async function backup(options: BackupOptions): Promise<RunResult> {
 
   const succeeded: string[] = []
   const failed: string[] = []
+  const projectResults: ProjectRunResult[] = []
   const startTime = Date.now()
 
   for (const projectName of projects) {
+    const projectStartTime = Date.now()
     const project = config.rules.projects[projectName]
+    const pushUrl = resolveUptimeKumaPushUrl(project, config.rules.uptime_kuma?.push_url)
+
     if (!project) {
       console.error(`Project not found: ${projectName}`)
       failed.push(projectName)
+      projectResults.push({
+        succeeded: [],
+        failed: [projectName],
+        duration: Date.now() - projectStartTime,
+        pushUrl,
+      })
       continue
     }
 
     console.log(`=== Backing up: ${projectName} ===`)
 
     let filesFrom: string | undefined
+    let projectSucceeded = false
 
     try {
       await runProjectHooks(project.hooks?.before_backup, {
@@ -58,6 +73,7 @@ export async function backup(options: BackupOptions): Promise<RunResult> {
         if (includedDirs.length === 0) {
           console.log(`No include_dirs matched for ${projectName}`)
           succeeded.push(projectName)
+          projectSucceeded = true
           continue
         }
 
@@ -79,11 +95,18 @@ export async function backup(options: BackupOptions): Promise<RunResult> {
       })
 
       succeeded.push(projectName)
+      projectSucceeded = true
     } catch (error) {
       console.error(`Failed to backup ${projectName}:`, error)
       failed.push(projectName)
     } finally {
       if (filesFrom) fs.rmSync(filesFrom, { force: true })
+      projectResults.push({
+        succeeded: projectSucceeded ? [projectName] : [],
+        failed: projectSucceeded ? [] : [projectName],
+        duration: Date.now() - projectStartTime,
+        pushUrl,
+      })
     }
   }
 
@@ -93,11 +116,37 @@ export async function backup(options: BackupOptions): Promise<RunResult> {
   if (succeeded.length > 0) console.log('Succeeded:', succeeded.join(', '))
   if (failed.length > 0) console.log('Failed:', failed.join(', '))
 
-  if (!dryRun && config.rules.uptime_kuma?.push_url) {
-    await notifyUptimeKuma({ succeeded, failed, duration }, config.rules.uptime_kuma.push_url)
+  if (!dryRun) {
+    for (const [pushUrl, result] of groupUptimeKumaResults(projectResults)) {
+      await notifyUptimeKuma(result, pushUrl)
+    }
   }
 
   return { succeeded, failed, duration }
+}
+
+function resolveUptimeKumaPushUrl(project: Project | undefined, globalPushUrl: string | undefined): string | undefined {
+  return project?.uptime_kuma?.push_url || globalPushUrl
+}
+
+function groupUptimeKumaResults(projectResults: ProjectRunResult[]): Map<string, RunResult> {
+  const groupedResults = new Map<string, RunResult>()
+
+  for (const projectResult of projectResults) {
+    if (!projectResult.pushUrl) continue
+
+    const result = groupedResults.get(projectResult.pushUrl) || {
+      succeeded: [],
+      failed: [],
+      duration: 0,
+    }
+    result.succeeded.push(...projectResult.succeeded)
+    result.failed.push(...projectResult.failed)
+    result.duration += projectResult.duration
+    groupedResults.set(projectResult.pushUrl, result)
+  }
+
+  return groupedResults
 }
 
 interface HookContext {

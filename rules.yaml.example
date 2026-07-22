@@ -16,9 +16,9 @@ defaults:
     keep_weekly: 4
     keep_monthly: 6
 
-# Uptime Kuma 通知（备份完成后推送状态）
+# Uptime Kuma 全局通知（可选，未配置项目级地址时作为回退）
 uptime_kuma:
-  push_url: "https://uptime.example.com/api/push/xxxxx"
+  push_url: "https://uptime.example.com/api/push/global-placeholder"
 
 # 备份项目
 projects:
@@ -27,6 +27,9 @@ projects:
     paths:
       - /path/to/data
     schedule: "0 */2 * * *"  # 每 2 小时自动备份
+    # 项目级地址优先于全局地址；相同地址的项目会合并为一条通知
+    uptime_kuma:
+      push_url: "https://uptime.example.com/api/push/data-placeholder"
     hooks:
       before_backup:
         - run: /path/to/scripts/prepare-data-backup.sh

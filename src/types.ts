@@ -26,6 +26,10 @@ export interface Retention {
   keep_yearly?: number
 }
 
+export interface UptimeKumaConfig {
+  push_url?: string
+}
+
 export interface Project {
   description?: string
   paths: string[]
@@ -34,6 +38,7 @@ export interface Project {
   excludes?: string[]
   include_dirs?: string[]
   hooks?: ProjectHooks
+  uptime_kuma?: UptimeKumaConfig
 }
 
 export type ProjectHook = string | {
@@ -51,9 +56,7 @@ export interface RulesConfig {
     schedule?: string | false
     retention?: Retention
   }
-  uptime_kuma?: {
-    push_url?: string
-  }
+  uptime_kuma?: UptimeKumaConfig
   maintenance?: {
     prune?: {
       schedule?: string | false

@@ -219,6 +219,8 @@ WAY_DIR=/path/to/config way restic snapshots
 - **defaults**: 全局默认配置（schedule、retention）
 - **projects**: 备份项目配置，可覆盖默认 schedule 和 retention
 - **projects.*.hooks**: 项目级备份钩子，支持 `before_backup` 和 `after_backup`
+- **uptime_kuma.push_url**: 全局 Uptime Kuma Push 地址，作为项目未配置通知地址时的回退
+- **projects.*.uptime_kuma.push_url**: 项目级 Uptime Kuma Push 地址，优先于全局地址
 - **maintenance**: 维护任务配置（prune、check）
 - **global_excludes**: 全局排除规则
 
@@ -239,6 +241,26 @@ projects:
 ```
 
 `before_backup` 失败会跳过该项目的 restic 备份并标记项目失败；`after_backup` 只在 restic 成功后执行，失败同样会标记项目失败。`--dry-run` 模式只打印钩子命令，不实际执行。钩子命令按 shell 命令执行，并会收到 `WAY_PROJECT`、`WAY_REMOTE`、`WAY_DIR`、`WAY_DRY_RUN` 环境变量。
+
+**项目级 Uptime Kuma 通知示例**：
+
+```yaml
+uptime_kuma:
+  push_url: "https://uptime.example.com/api/push/global-placeholder"
+
+projects:
+  data:
+    paths: [/data]
+    uptime_kuma:
+      push_url: "https://uptime.example.com/api/push/data-placeholder"
+
+  root:
+    paths: [/root]
+    uptime_kuma:
+      push_url: "https://uptime.example.com/api/push/system-placeholder"
+```
+
+每个项目优先使用项目级 Push 地址，未配置时回退到全局地址。一次 `way backup` 中使用相同有效地址的项目只发送一条汇总通知；同组任一项目失败时状态为 DOWN，不同地址的通知互不覆盖。`--dry-run` 不发送通知，通知请求失败只记录错误，不改变备份结果。
 
 **项目级调度示例**：
 
