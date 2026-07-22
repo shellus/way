@@ -230,7 +230,7 @@ docs: 更新安装文档
 npm run test:run
 
 # 2. 更新版本号
-# 修改 package.json、src/cli.ts、tests/e2e/full.test.ts
+# 修改 package.json、package-lock.json、src/cli.ts
 
 # 3. 更新文档
 # 更新 README.md、MIGRATION.md（如有破坏性变更）
@@ -239,21 +239,21 @@ npm run test:run
 git add -A
 git commit -m "chore: 准备发布 v0.x.x"
 
-# 5. 创建 tag
+# 5. 推送 master 并创建 tag
+git push origin master
 git tag v0.x.x
-git push origin master --tags
+git push origin v0.x.x
 
-# 6. GitHub Actions 自动创建 Release 资产
-# 产物: way-linux-x64.tar.gz
+# 6. GitHub Actions 自动执行测试、构建和发布
+# - 通过 Trusted Publishing 发布 npm 包
+# - 创建 GitHub Release
+# - 上传 way-linux-x64.tar.gz
 
-# 7. 发布到 npm
-npm publish
-
-# 8. 验证 npm 安装
+# 7. 验证 npm 安装
 npm install -g @shellus/way@0.x.x
 way --version
 
-# 9. 验证 GitHub Release 独立发行包
+# 8. 验证 GitHub Release 独立发行包
 curl -LO https://github.com/shellus/way/releases/download/v0.x.x/way-linux-x64.tar.gz
 tar -xzf way-linux-x64.tar.gz
 ./way-linux-x64/bin/way --version

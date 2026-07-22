@@ -460,4 +460,4 @@ way --remote=oss restic restore <snapshot-id> --target /tmp/restore
 - 变更规范和测试要求
 - 发布流程
 
-内部开发参考：[CLAUDE.md](CLAUDE.md)
+项目维护规则：[AGENTS.md](AGENTS.md)
