@@ -321,4 +321,61 @@ describe('backup', () => {
     expect(result.succeeded).toEqual([])
     expect(result.failed).toEqual(['data'])
   })
+
+  it.skipIf(process.platform === 'win32')('before_backup 超时后终止完整进程组', async () => {
+    const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'way-hook-timeout-'))
+    const hookScript = path.join(testDir, 'hook.cjs')
+    const descendantPidFile = path.join(testDir, 'descendant.pid')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    process.env.WAY_HOOK_DESCENDANT_PID = descendantPidFile
+
+    fs.writeFileSync(hookScript, `
+const fs = require('node:fs')
+const { spawn } = require('node:child_process')
+
+const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+  stdio: 'ignore',
+})
+fs.writeFileSync(process.env.WAY_HOOK_DESCENDANT_PID, String(child.pid))
+setInterval(() => {}, 1000)
+`)
+
+    mockRules({
+      projects: {
+        data: {
+          paths: ['/data'],
+          hooks: {
+            before_backup: [
+              { run: `${JSON.stringify(process.execPath)} ${JSON.stringify(hookScript)}`, timeout: '300ms' },
+            ],
+          },
+        },
+      },
+      global_excludes: [],
+    })
+
+    let descendantPid: number | undefined
+    try {
+      const result = await backup({ remote: 'local', projects: ['data'] })
+
+      expect(result.failed).toEqual(['data'])
+      expect(execRestic).not.toHaveBeenCalled()
+      descendantPid = Number(fs.readFileSync(descendantPidFile, 'utf8'))
+
+      await vi.waitFor(() => {
+        expect(() => process.kill(descendantPid!, 0)).toThrow(expect.objectContaining({ code: 'ESRCH' }))
+      }, { timeout: 3_000 })
+    } finally {
+      if (descendantPid !== undefined) {
+        try {
+          process.kill(descendantPid, 'SIGKILL')
+        } catch (error) {
+          if (!(error instanceof Error && 'code' in error && error.code === 'ESRCH')) throw error
+        }
+      }
+      delete process.env.WAY_HOOK_DESCENDANT_PID
+      consoleError.mockRestore()
+      fs.rmSync(testDir, { recursive: true, force: true })
+    }
+  })
 })

@@ -157,6 +157,8 @@ interface HookContext {
   label: 'before_backup' | 'after_backup'
 }
 
+const HOOK_FORCE_KILL_DELAY_MS = 1_000
+
 function normalizeHook(hook: ProjectHook): { run: string, timeout?: string | number } {
   if (typeof hook === 'string') return { run: hook }
   return hook
@@ -183,6 +185,34 @@ function parseTimeout(timeout: string | number | undefined): number | undefined 
   }
 }
 
+function isMissingProcessError(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ESRCH'
+}
+
+function signalProcessGroup(pid: number, signal: NodeJS.Signals): boolean {
+  try {
+    process.kill(-pid, signal)
+    return true
+  } catch (error) {
+    if (isMissingProcessError(error)) return false
+    throw error
+  }
+}
+
+function hookTimedOut(error: unknown): boolean {
+  return typeof error === 'object'
+    && error !== null
+    && 'timedOut' in error
+    && error.timedOut === true
+}
+
+async function terminateProcessGroup(pid: number): Promise<void> {
+  if (!signalProcessGroup(pid, 'SIGTERM')) return
+
+  await new Promise((resolve) => setTimeout(resolve, HOOK_FORCE_KILL_DELAY_MS))
+  signalProcessGroup(pid, 'SIGKILL')
+}
+
 async function runProjectHooks(hooks: ProjectHook[] | undefined, context: HookContext): Promise<void> {
   if (!hooks?.length) return
 
@@ -196,10 +226,11 @@ async function runProjectHooks(hooks: ProjectHook[] | undefined, context: HookCo
     }
 
     console.log(`Running ${context.label} hook for ${context.projectName}: ${normalized.run}`)
-    await execaCommand(normalized.run, {
+    const subprocess = execaCommand(normalized.run, {
       shell: true,
       stdio: 'inherit',
       timeout: parseTimeout(normalized.timeout),
+      detached: process.platform !== 'win32',
       env: {
         WAY_PROJECT: context.projectName,
         WAY_REMOTE: context.remote,
@@ -207,6 +238,23 @@ async function runProjectHooks(hooks: ProjectHook[] | undefined, context: HookCo
         WAY_DRY_RUN: context.dryRun ? '1' : '0',
       },
     })
+    const processGroupPid = process.platform === 'win32' ? undefined : subprocess.pid
+    const cleanupOnExit = processGroupPid === undefined
+      ? undefined
+      : () => signalProcessGroup(processGroupPid, 'SIGTERM')
+
+    if (cleanupOnExit) process.once('exit', cleanupOnExit)
+
+    try {
+      await subprocess
+    } catch (error) {
+      if (processGroupPid !== undefined && hookTimedOut(error)) {
+        await terminateProcessGroup(processGroupPid)
+      }
+      throw error
+    } finally {
+      if (cleanupOnExit) process.removeListener('exit', cleanupOnExit)
+    }
   }
 }
 

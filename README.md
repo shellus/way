@@ -242,6 +242,8 @@ projects:
 
 `before_backup` 失败会跳过该项目的 restic 备份并标记项目失败；`after_backup` 只在 restic 成功后执行，失败同样会标记项目失败。`--dry-run` 模式只打印钩子命令，不实际执行。钩子命令按 shell 命令执行，并会收到 `WAY_PROJECT`、`WAY_REMOTE`、`WAY_DIR`、`WAY_DRY_RUN` 环境变量。
 
+Linux 上的 hook 达到 `timeout` 后，Way 会终止对应 shell 的完整进程组；进程未在宽限期内退出时会继续强制终止，避免数据库导出、压缩或同步子进程脱离 Way 后持续运行。hook 仍应保持幂等，并自行清理失败时生成的临时文件。
+
 **项目级 Uptime Kuma 通知示例**：
 
 ```yaml
