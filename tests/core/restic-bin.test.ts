@@ -68,7 +68,7 @@ describe('resolveResticBin', () => {
   })
 
   it('独立包安装到系统目录后从 lib/way 查找内置 restic', () => {
-    const bundledRestic = '/usr/local/lib/way/vendor/restic/linux-x64/restic'
+    const bundledRestic = path.join('/usr/local/lib/way', 'vendor/restic/linux-x64/restic')
 
     const bin = resolveResticBin({
       env: {},
@@ -94,29 +94,29 @@ describe('resolveExampleConfigPath', () => {
     const configPath = resolveExampleConfigPath('repositories.yaml', {
       packageRoot: '/pkg',
       executablePath: '/pkg/dist/cli.js',
-      existsSync: (file) => file === '/pkg/repositories.yaml.example',
+      existsSync: (file) => file === path.join('/pkg', 'repositories.yaml.example'),
     })
 
-    expect(configPath).toBe('/pkg/repositories.yaml.example')
+    expect(configPath).toBe(path.join('/pkg', 'repositories.yaml.example'))
   })
 
   it('独立包解压后从可执行文件上级目录查找示例配置', () => {
     const configPath = resolveExampleConfigPath('repositories.yaml', {
       packageRoot: '/$bunfs/root',
       executablePath: '/tmp/way-linux-x64/bin/way',
-      existsSync: (file) => file === '/tmp/way-linux-x64/repositories.yaml.example',
+      existsSync: (file) => file === path.join('/tmp/way-linux-x64', 'repositories.yaml.example'),
     })
 
-    expect(configPath).toBe('/tmp/way-linux-x64/repositories.yaml.example')
+    expect(configPath).toBe(path.join('/tmp/way-linux-x64', 'repositories.yaml.example'))
   })
 
   it('独立包安装到系统目录后从 lib/way 查找示例配置', () => {
     const configPath = resolveExampleConfigPath('rules.yaml', {
       packageRoot: '/$bunfs/root',
       executablePath: '/usr/local/bin/way',
-      existsSync: (file) => file === '/usr/local/lib/way/rules.yaml.example',
+      existsSync: (file) => file === path.join('/usr/local/lib/way', 'rules.yaml.example'),
     })
 
-    expect(configPath).toBe('/usr/local/lib/way/rules.yaml.example')
+    expect(configPath).toBe(path.join('/usr/local/lib/way', 'rules.yaml.example'))
   })
 })

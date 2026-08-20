@@ -127,6 +127,16 @@ export interface RestoreArgsOptions {
   dryRun?: boolean
   delete?: boolean
   verbose?: boolean
+  platform?: NodeJS.Platform
+  includePaths?: string[]
+}
+
+export function normalizeResticPath(value: string, platform = process.platform): string {
+  if (platform !== 'win32') return value
+
+  const match = value.match(/^([A-Za-z]):[\\/](.*)$/)
+  if (!match) return value.replace(/\\/g, '/')
+  return `/${match[1].toUpperCase()}/${match[2].replace(/\\/g, '/')}`
 }
 
 export function buildRestoreArgs(name: string, project: Project, options: RestoreArgsOptions): string[] {
@@ -139,7 +149,7 @@ export function buildRestoreArgs(name: string, project: Project, options: Restor
   if (options.host) args.push(`--host=${options.host}`)
   args.push(`--target=${options.target}`)
 
-  for (const path of project.paths) args.push(`--include=${path}`)
+  for (const path of options.includePaths || project.paths) args.push(`--include=${normalizeResticPath(path, options.platform)}`)
   if (options.dryRun) args.push('--dry-run')
   if (options.delete) args.push('--delete')
   if (options.verbose) args.push('--verbose=2')

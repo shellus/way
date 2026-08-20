@@ -3,7 +3,7 @@ import { execa } from 'execa'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { buildResticEnv, buildBackupArgs, buildRestoreArgs, execRestic, collectIncludeDirs } from '../../src/core/restic'
+import { buildResticEnv, buildBackupArgs, buildRestoreArgs, execRestic, collectIncludeDirs, normalizeResticPath } from '../../src/core/restic'
 
 vi.mock('execa', () => ({
   execa: vi.fn().mockResolvedValue({}),
@@ -53,37 +53,42 @@ describe('buildBackupArgs', () => {
 
 describe('collectIncludeDirs', () => {
   it('按相对 paths 的目录 glob 展开 include_dirs', () => {
+    const root = path.resolve('/data')
+    const www = path.join(root, 'www')
+    const xhj = path.join(www, 'xhj')
+    const app1 = path.join(xhj, 'app1')
+    const app2 = path.join(xhj, 'app2')
     const entries: Record<string, Array<{ name: string, isDirectory: boolean }>> = {
-      '/data': [
+      [root]: [
         { name: 'www', isDirectory: true },
       ],
-      '/data/www': [
+      [www]: [
         { name: 'xhj', isDirectory: true },
         { name: 'other', isDirectory: true },
       ],
-      '/data/www/xhj': [
+      [xhj]: [
         { name: 'app1', isDirectory: true },
         { name: 'app2', isDirectory: true },
       ],
-      '/data/www/xhj/app1': [
+      [app1]: [
         { name: 'node_modules', isDirectory: true },
       ],
-      '/data/www/xhj/app2': [
+      [app2]: [
         { name: 'node_modules', isDirectory: true },
       ],
     }
 
     const visited: string[] = []
-    const matches = collectIncludeDirs(['/data'], ['www/xhj/*/node_modules'], {
+    const matches = collectIncludeDirs([root], ['www/xhj/*/node_modules'], {
       readdirSync: (dir) => {
         visited.push(dir)
         return entries[dir] || []
       },
     })
 
-    expect(matches).toEqual(['/data/www/xhj/app1/node_modules', '/data/www/xhj/app2/node_modules'])
-    expect(visited).not.toContain('/data/www/xhj/app1/node_modules')
-    expect(visited).not.toContain('/data/www/xhj/app2/node_modules')
+    expect(matches).toEqual([path.join(app1, 'node_modules'), path.join(app2, 'node_modules')])
+    expect(visited).not.toContain(path.join(app1, 'node_modules'))
+    expect(visited).not.toContain(path.join(app2, 'node_modules'))
   })
 
   it('使用真实文件系统时只扫描目录', () => {
@@ -133,6 +138,35 @@ describe('buildRestoreArgs', () => {
       '--delete',
       '--verbose=2',
     ])
+  })
+
+  it('允许恢复时传入相对快照路径', () => {
+    const project: Project = { paths: ['C:\\Users\\shell\\.way'] }
+    const args = buildRestoreArgs('config', project, {
+      target: 'D:\\restore\\C\\Users\\shell',
+      snapshot: 'latest:/C/Users/shell',
+      includePaths: ['/.way'],
+      platform: 'win32',
+    })
+
+    expect(args).toEqual([
+      'restore',
+      'latest:/C/Users/shell',
+      '--tag=way:config',
+      '--target=D:\\restore\\C\\Users\\shell',
+      '--include=/.way',
+    ])
+  })
+})
+
+describe('normalizeResticPath', () => {
+  it('将 Windows 驱动器路径转换为快照中的标准路径', () => {
+    expect(normalizeResticPath('C:\\Users\\shell\\.way', 'win32')).toBe('/C/Users/shell/.way')
+    expect(normalizeResticPath('d:/projects', 'win32')).toBe('/D/projects')
+  })
+
+  it('保留非 Windows 路径', () => {
+    expect(normalizeResticPath('/data/projects', 'linux')).toBe('/data/projects')
   })
 })
 

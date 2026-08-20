@@ -5,6 +5,7 @@ import { backup } from './commands/backup'
 import { restore } from './commands/restore'
 import { gc } from './commands/gc'
 import { systemd } from './commands/systemd'
+import { windowsService } from './commands/windows-service'
 import { daemon } from './commands/daemon'
 import { execRestic, buildResticEnv, buildS3Options } from './core/restic'
 import { loadConfig } from './core/config'
@@ -137,6 +138,15 @@ program
   .action(async (action, options, command) => {
     const remote = command.parent.opts().remote
     await systemd({ remote, action: action as 'show' | 'install' | 'uninstall' | 'status' })
+  })
+
+program
+  .command('windows-service <action>')
+  .description('管理 Windows 原生开机守护任务 (show|install|uninstall|status)')
+  .addHelpText('after', commonHelpText)
+  .action(async (action, options, command) => {
+    const remote = command.parent.opts().remote
+    await windowsService({ remote, action: action as 'show' | 'install' | 'uninstall' | 'status' })
   })
 
 program

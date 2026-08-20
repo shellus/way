@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { restore } from '../../src/commands/restore'
+import { buildWindowsRestorePlans, restore } from '../../src/commands/restore'
 import { loadConfig } from '../../src/core/config'
 import { execRestic } from '../../src/core/restic'
 
@@ -76,5 +76,38 @@ describe('restore', () => {
   it('缺少 target 时拒绝恢复', async () => {
     await expect(restore({ remote: 'local' })).rejects.toThrow('--target is required')
     expect(execRestic).not.toHaveBeenCalled()
+  })
+
+  it('为同盘 Windows 路径构建可恢复的子目录计划', () => {
+    expect(buildWindowsRestorePlans({
+      paths: [
+        'C:\\Users\\shell\\Desktop',
+        'C:\\Users\\shell\\.gitconfig',
+        'C:\\Users\\shell\\AppData\\Roaming\\Code\\User\\settings.json',
+      ],
+    }, 'D:\\restore')).toEqual([
+      {
+        snapshot: 'latest:/C/Users/shell',
+        target: 'D:\\restore\\C\\Users\\shell',
+        includePaths: ['/Desktop', '/.gitconfig', '/AppData/Roaming/Code/User/settings.json'],
+      },
+    ])
+  })
+
+  it('按盘符拆分 Windows 恢复计划', () => {
+    expect(buildWindowsRestorePlans({
+      paths: ['C:\\Users\\shell\\Desktop', 'D:\\projects'],
+    }, 'E:\\restore', 'abc123')).toEqual([
+      {
+        snapshot: 'abc123:/C/Users/shell',
+        target: 'E:\\restore\\C\\Users\\shell',
+        includePaths: ['/Desktop'],
+      },
+      {
+        snapshot: 'abc123:/D',
+        target: 'E:\\restore\\D',
+        includePaths: ['/projects'],
+      },
+    ])
   })
 })

@@ -137,6 +137,15 @@ way systemd install
 way systemd status
 ```
 
+Windows 使用系统自带的任务计划程序守护 `way daemon`，不依赖 NSSM 或其他常驻工具：
+
+```powershell
+way windows-service install
+way windows-service status
+```
+
+`windows-service install` 会创建以 `SYSTEM` 身份在开机后运行的原生任务，并配置失败重启；注册和删除任务需要在提升权限的 PowerShell 中执行。任务仅守护 daemon，实际备份频率仍由 `rules.yaml` 的项目级 `schedule` 决定。
+
 ### 4. 手动执行备份
 
 ```bash
@@ -169,6 +178,12 @@ way systemd show        # 显示 systemd 配置
 way systemd status      # 查看服务状态
 way systemd uninstall   # 卸载服务
 
+# Windows 原生守护任务管理
+way windows-service install    # 注册开机启动、SYSTEM 身份运行的 daemon 守护任务
+way windows-service show       # 显示将要写入的任务与启动脚本
+way windows-service status     # 查看任务状态
+way windows-service uninstall  # 删除任务与启动脚本
+
 # 显式透传 restic（way 只设置环境变量）
 way restic snapshots    # → restic snapshots
 way restic check        # → restic check
@@ -193,6 +208,7 @@ graph LR
 
     G[systemd service] --> H[启动 daemon]
     H --> I[进程崩溃自动重启]
+    J[Windows Task Scheduler] --> H
 ```
 
 ---

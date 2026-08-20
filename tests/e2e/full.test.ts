@@ -4,7 +4,9 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 
-describe('way E2E', () => {
+const describeLinux = process.platform === 'linux' ? describe : describe.skip
+
+describeLinux('way E2E', () => {
   const testDir = path.join(os.tmpdir(), 'way-e2e-' + Date.now())
   const repoPath = path.join(testDir, 'repo')
   const dataPath = path.join(testDir, 'data')

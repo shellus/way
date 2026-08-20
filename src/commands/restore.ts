@@ -1,6 +1,7 @@
+import path from 'path'
 import { loadConfig } from '../core/config'
 import { buildResticEnv, buildRestoreArgs, buildS3Options, execRestic } from '../core/restic'
-import type { RunResult } from '../types'
+import type { Project, RunResult } from '../types'
 
 export interface RestoreOptions {
   remote: string
@@ -13,8 +14,63 @@ export interface RestoreOptions {
   verbose?: boolean
 }
 
+export interface WindowsRestorePlan {
+  snapshot: string
+  target: string
+  includePaths: string[]
+}
+
+function isWithin(parent: string, child: string, pathApi: typeof path.win32): boolean {
+  const relative = pathApi.relative(parent, child)
+  return relative === '' || (!relative.startsWith('..') && !pathApi.isAbsolute(relative))
+}
+
+function findCommonParent(paths: string[], pathApi: typeof path.win32): string {
+  let candidate = paths[0]
+
+  while (!paths.every((item) => isWithin(candidate, item, pathApi))) {
+    const parent = pathApi.dirname(candidate)
+    if (parent === candidate) return candidate
+    candidate = parent
+  }
+
+  return candidate
+}
+
+export function buildWindowsRestorePlans(
+  project: Project,
+  target: string,
+  snapshot = 'latest',
+): WindowsRestorePlan[] {
+  const pathApi = path.win32
+  const groups = new Map<string, string[]>()
+
+  for (const sourcePath of project.paths) {
+    const root = pathApi.parse(sourcePath).root.toLowerCase()
+    const paths = groups.get(root) || []
+    paths.push(sourcePath)
+    groups.set(root, paths)
+  }
+
+  return Array.from(groups.values()).map((paths) => {
+    const parent = findCommonParent(paths.map((item) => pathApi.dirname(item)), pathApi)
+    const drive = parent[0].toUpperCase()
+    const rest = parent.slice(2).replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+    const snapshotPath = rest ? `/${drive}/${rest}` : `/${drive}`
+    const includePaths = paths.map((item) => `/${pathApi.relative(parent, item).replace(/\\/g, '/')}`)
+    const targetPath = pathApi.join(target, ...snapshotPath.split('/').filter(Boolean))
+
+    return {
+      snapshot: `${snapshot}:${snapshotPath}`,
+      target: targetPath,
+      includePaths: Array.from(new Set(includePaths)),
+    }
+  })
+}
+
 export async function restore(options: RestoreOptions): Promise<RunResult> {
   if (!options.target) throw new Error('--target is required')
+  const target = options.target
 
   const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
   const config = loadConfig(wayDir, options.remote)
@@ -41,15 +97,22 @@ export async function restore(options: RestoreOptions): Promise<RunResult> {
     console.log(`=== Restoring: ${projectName} ===`)
 
     try {
-      const args = buildRestoreArgs(projectName, project, {
-        target: options.target,
-        snapshot: options.snapshot,
-        host: options.host,
-        dryRun: options.dryRun,
-        delete: options.delete,
-        verbose: options.verbose,
-      })
-      await execRestic(args, env, s3Options)
+      const plans = process.platform === 'win32' && project.paths.every((item) => /^[A-Za-z]:[\\/]/.test(item))
+        ? buildWindowsRestorePlans(project, target, options.snapshot)
+        : [{ snapshot: options.snapshot, target, includePaths: undefined }]
+
+      for (const plan of plans) {
+        const args = buildRestoreArgs(projectName, project, {
+          target: plan.target,
+          snapshot: plan.snapshot,
+          host: options.host,
+          dryRun: options.dryRun,
+          delete: options.delete,
+          verbose: options.verbose,
+          includePaths: plan.includePaths,
+        })
+        await execRestic(args, env, s3Options)
+      }
       succeeded.push(projectName)
     } catch (error) {
       console.error(`Failed to restore ${projectName}:`, error)
