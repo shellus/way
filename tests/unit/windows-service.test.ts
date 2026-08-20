@@ -47,6 +47,7 @@ describe('Windows daemon task assets', () => {
     expect(xml).toContain('<BootTrigger>')
     expect(xml).toContain('<Delay>PT30S</Delay>')
     expect(xml).toContain('<UserId>S-1-5-18</UserId>')
+    expect(xml).not.toContain('<LogonType>')
     expect(xml).toContain('<RestartOnFailure><Interval>PT1M</Interval><Count>3</Count></RestartOnFailure>')
     expect(xml).toContain('cmd.exe')
   })
