@@ -15,6 +15,9 @@ defaults:
     keep_daily: 7
     keep_weekly: 4
     keep_monthly: 6
+    # 如需按当前时间实行严格范围保留，改用以下两个字段，且不要与上述 keep_* 混用：
+    # keep_hosts: [backup-host]
+    # max_age_days: 7
 
 # Uptime Kuma 全局通知（可选，未配置项目级地址时作为回退）
 uptime_kuma:
@@ -99,5 +102,6 @@ global_excludes:
 maintenance:
   prune:
     schedule: "0 4 * * 0"  # 每周日凌晨 4 点清理
+    # retry_lock: "30m"      # 备份仍持有仓库锁时等待，避免立即失败
   check:
     schedule: false        # 不执行

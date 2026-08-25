@@ -24,6 +24,8 @@ export interface Retention {
   keep_weekly?: number
   keep_monthly?: number
   keep_yearly?: number
+  keep_hosts?: string[]
+  max_age_days?: number
 }
 
 export interface UptimeKumaConfig {
@@ -60,6 +62,7 @@ export interface RulesConfig {
   maintenance?: {
     prune?: {
       schedule?: string | false
+      retry_lock?: string
     }
     check?: {
       schedule?: string | false

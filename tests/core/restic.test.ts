@@ -3,7 +3,7 @@ import { execa } from 'execa'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { buildResticEnv, buildBackupArgs, buildRestoreArgs, execRestic, collectIncludeDirs, normalizeResticPath } from '../../src/core/restic'
+import { buildResticEnv, buildBackupArgs, buildRestoreArgs, execRestic, execResticCapture, collectIncludeDirs, normalizeResticPath } from '../../src/core/restic'
 
 vi.mock('execa', () => ({
   execa: vi.fn().mockResolvedValue({}),
@@ -196,6 +196,23 @@ describe('execRestic', () => {
       expect.objectContaining({
         env: expect.objectContaining({ RESTIC_REPOSITORY: '/repo' }),
         stdio: 'inherit',
+      }),
+    )
+  })
+
+  it('捕获 restic 标准输出供结构化命令解析', async () => {
+    process.env.WAY_RESTIC_BIN = '/custom/restic'
+    vi.mocked(execa).mockResolvedValueOnce({ stdout: '[{"id":"snapshot"}]' } as never)
+
+    const output = await execResticCapture(['snapshots', '--json'], { RESTIC_REPOSITORY: '/repo' })
+
+    expect(output).toBe('[{"id":"snapshot"}]')
+    expect(execa).toHaveBeenCalledWith(
+      '/custom/restic',
+      ['snapshots', '--json'],
+      expect.objectContaining({
+        stdout: 'pipe',
+        stderr: 'inherit',
       }),
     )
   })

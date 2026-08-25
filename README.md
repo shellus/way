@@ -240,6 +240,27 @@ WAY_DIR=/path/to/config way restic snapshots
 - **maintenance**: 维护任务配置（prune、check）
 - **global_excludes**: 全局排除规则
 
+`defaults.retention` 支持两种互斥模式：
+
+- 计数保留：`keep_daily`、`keep_weekly`、`keep_monthly`、`keep_yearly`，按 restic 分组规则保留周期快照。
+- 严格范围保留：`keep_hosts` 与 `max_age_days` 必须同时设置。Way 以执行时的当前时间计算截止点，只保留白名单主机在最近指定天数内的快照；其他快照使用明确 ID 删除。该模式不会使用 restic 相对最新快照计算的 `keep-within` 语义。
+
+两种模式不得混用。严格范围保留示例：
+
+```yaml
+defaults:
+  retention:
+    keep_hosts: [backup-host]
+    max_age_days: 7
+
+maintenance:
+  prune:
+    schedule: "0 4 * * *"
+    retry_lock: "30m"
+```
+
+`maintenance.prune.retry_lock` 会作为 restic 全局 `--retry-lock` 参数传递。正式启用严格范围保留前必须先执行 `way gc --dry-run`，核对输出的保留和删除快照列表。
+
 项目级钩子用于在 restic 备份前后执行一致性快照、校验或清理脚本：
 
 ```yaml
@@ -378,6 +399,8 @@ repositories:
 ```
 
 建议设置文件权限：`chmod 600 ~/.way/repositories.yaml`
+
+`repositories.yaml` 和 `rules.yaml` 支持 YAML merge anchor（`<<`）；Way 使用 YAML 1.2 Core Schema 并显式启用 merge tag，不会同时启用 YAML 1.1 的日期自动转换等额外类型。
 
 ## 配置备份
 

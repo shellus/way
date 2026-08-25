@@ -166,8 +166,20 @@ export function buildS3Options(repo: Repository): string[] {
 }
 
 export async function execRestic(args: string[], env: Record<string, string>, s3Options: string[] = []): Promise<void> {
+  await runRestic(args, env, s3Options, false)
+}
+
+export async function execResticCapture(args: string[], env: Record<string, string>, s3Options: string[] = []): Promise<string> {
+  return runRestic(args, env, s3Options, true)
+}
+
+async function runRestic(args: string[], env: Record<string, string>, s3Options: string[], capture: boolean): Promise<string> {
   try {
-    await execa(resolveResticBin(), [...s3Options, ...args], { env: { ...process.env, ...env }, stdio: 'inherit' })
+    const result = await execa(resolveResticBin(), [...s3Options, ...args], {
+      env: { ...process.env, ...env },
+      ...(capture ? { stdout: 'pipe', stderr: 'inherit' } : { stdio: 'inherit' }),
+    })
+    return typeof result.stdout === 'string' ? result.stdout : ''
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       console.error('Error: restic not found. Linux x64 packages include restic; other platforms must install it first.')
