@@ -98,6 +98,20 @@ global_excludes:
   - "*.tmp"
   - "*.swp"
 
+# 仓库复制：每天只复制各项目的最新快照，远程仓库使用独立保留策略
+replications:
+  local-to-s3:
+    from: local
+    to: s3
+    snapshot_policy: latest-per-project
+    schedule: "30 5 * * *"
+    prune_schedule: "30 6 * * 0"
+    retention:
+      keep_daily: 30
+      keep_weekly: 12
+      keep_monthly: 12
+      keep_yearly: 3
+
 # 维护任务（可选）
 maintenance:
   prune:

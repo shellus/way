@@ -52,6 +52,7 @@
 - 支持项目级 schedule 配置（不同项目不同频率）
 - 使用 node-cron 实现精确到分钟的调度
 - systemd service 管理常驻进程（自动重启）
+- 支持把本地仓库中各项目的最新快照定期复制到远程仓库
 
 ### 9. 多层冗余原则
 
@@ -168,6 +169,8 @@ way restore data --host old-host --target /tmp/restore --dry-run  # 从指定 ho
 way restore data --target /tmp/restore --delete     # 删除目标中快照不存在的文件
 way gc                  # 按 retention 策略清理旧快照
 way gc --dry-run        # 模拟清理（不实际删除）
+way replicate           # 执行全部仓库复制任务
+way replicate local-to-s3 --init  # 首次初始化目标仓库并执行复制
 
 # daemon 模式（推荐）
 way daemon              # 启动常驻进程，按配置定时执行
@@ -205,6 +208,8 @@ graph LR
     C --> D[node-cron 定时触发]
     D --> E[执行 restic backup]
     E --> F[推送 Uptime Kuma]
+    D --> K[选择各项目最新快照]
+    K --> L[restic copy 到远程仓库]
 
     G[systemd service] --> H[启动 daemon]
     H --> I[进程崩溃自动重启]
@@ -237,6 +242,7 @@ WAY_DIR=/path/to/config way restic snapshots
 - **projects.*.hooks**: 项目级备份钩子，支持 `before_backup` 和 `after_backup`
 - **uptime_kuma.push_url**: 全局 Uptime Kuma Push 地址，作为项目未配置通知地址时的回退
 - **projects.*.uptime_kuma.push_url**: 项目级 Uptime Kuma Push 地址，优先于全局地址
+- **replications**: 仓库复制任务，包含源仓库、目标仓库、调度和目标仓库独立保留策略
 - **maintenance**: 维护任务配置（prune、check）
 - **global_excludes**: 全局排除规则
 
@@ -372,6 +378,27 @@ daemon 的调度心跳最多容忍 5 秒延迟；事件循环短暂阻塞后仍�
 | `"*/30 * * * *"` | 分钟间隔 | 每 30 分钟 |
 | `false` | 禁用自动调度 | 只手动备份 |
 
+**仓库复制示例**：
+
+```yaml
+replications:
+  local-to-s3:
+    from: local
+    to: s3
+    snapshot_policy: latest-per-project
+    schedule: "30 5 * * *"
+    prune_schedule: "30 6 * * 0"
+    retention:
+      keep_daily: 30
+      keep_weekly: 12
+      keep_monthly: 12
+      keep_yearly: 3
+```
+
+复制任务读取源仓库中所有带 `way:<project>` 标签的快照，每个项目只选择时间最新的一份传给 `restic copy`。因此本地可以高频备份，而远程只接收每日复制时刻的项目最新状态；重复运行会跳过已经复制的源快照。目标仓库的 `prune_schedule` 和 `retention` 独立于默认仓库。
+
+目标仓库第一次使用时执行 `way replicate <name> --init`。该命令通过 `--copy-chunker-params` 继承源仓库的分块参数，再执行首次复制；初始化后日常任务只运行 `way replicate <name>`。复制源当前必须是本地仓库，源与目标可以使用不同的 restic 密码。
+
 #### 排除规则通配符语法
 
 restic 使用 Go 的 filepath.Match 语法：
@@ -396,6 +423,18 @@ repositories:
     path: /backup/repo
     credentials:
       password: your-password  # 直接明文
+
+  s3:
+    type: s3
+    endpoint: s3.example.com
+    bucket: my-backup-bucket
+    region: region-1
+    options:
+      bucket_lookup: dns
+    credentials:
+      password: your-restic-password
+      access_key_id: your-access-key
+      secret_access_key: your-secret-key
 ```
 
 建议设置文件权限：`chmod 600 ~/.way/repositories.yaml`

@@ -7,6 +7,7 @@ import { gc } from './commands/gc'
 import { systemd } from './commands/systemd'
 import { windowsService } from './commands/windows-service'
 import { daemon } from './commands/daemon'
+import { replicate } from './commands/replicate'
 import { execRestic, buildResticEnv, buildS3Options } from './core/restic'
 import { loadConfig } from './core/config'
 import { resolveExampleConfigPath } from './core/restic-bin'
@@ -27,6 +28,7 @@ program
   $ way --remote=oss backup    使用 oss 仓库执行备份（全局选项需放在子命令前）
   $ way init                   初始化 way 配置文件
   $ way gc                     清理旧快照
+  $ way replicate              复制各项目最新快照到远程仓库
   $ way systemd install        安装定时任务
   $ way restic snapshots       查看快照列表
   $ way restic restore abc123 --target /tmp/restore
@@ -133,6 +135,16 @@ program
   .action(async function(cmdOptions) {
     const remote = resolveRemote(this)
     await gc({ remote, dryRun: cmdOptions.dryRun })
+  })
+
+program
+  .command('replicate [names...]')
+  .description('按 rules.yaml 复制各项目最新快照到目标仓库')
+  .option('--init', '初始化目标仓库并继承源仓库 chunker 参数')
+  .addHelpText('after', commonHelpText)
+  .action(async function(names, cmdOptions) {
+    const result = await replicate({ names, initialize: cmdOptions.init })
+    if (result.failed.length > 0) process.exitCode = 1
   })
 
 program

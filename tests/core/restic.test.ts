@@ -3,7 +3,7 @@ import { execa } from 'execa'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { buildResticEnv, buildBackupArgs, buildRestoreArgs, execRestic, execResticCapture, collectIncludeDirs, normalizeResticPath } from '../../src/core/restic'
+import { buildResticEnv, buildBackupArgs, buildRestoreArgs, buildS3Options, execRestic, execResticCapture, collectIncludeDirs, normalizeResticPath } from '../../src/core/restic'
 
 vi.mock('execa', () => ({
   execa: vi.fn().mockResolvedValue({}),
@@ -21,6 +21,22 @@ describe('buildResticEnv', () => {
     const env = buildResticEnv(repo)
     expect(env.RESTIC_REPOSITORY).toBe('s3:https://s3.example.com/my-bucket')
     expect(env.RESTIC_PASSWORD).toBe('pass123')
+  })
+
+  it('构建 S3 region 和 bucket lookup 选项', () => {
+    const repo: Repository = {
+      type: 's3',
+      endpoint: 's3.example.com',
+      bucket: 'my-bucket',
+      region: 'region-1',
+      options: { bucket_lookup: 'dns' },
+      credentials: {},
+    }
+
+    expect(buildS3Options(repo)).toEqual([
+      '-o', 's3.bucket-lookup=dns',
+      '-o', 's3.region=region-1',
+    ])
   })
 })
 

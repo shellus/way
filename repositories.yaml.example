@@ -15,6 +15,7 @@ repositories:
     type: s3
     endpoint: s3.example.com
     bucket: my-backup-bucket
+    region: region-1
     options:
       bucket_lookup: dns
     credentials:

@@ -4,19 +4,20 @@ import path from 'path'
 import { resolveResticBin } from './restic-bin'
 import type { Repository, Project } from '../types'
 
-export function buildResticEnv(repo: Repository): Record<string, string> {
-  const env: Record<string, string> = {}
-
+export function buildRepositoryLocation(repo: Repository): string {
   switch (repo.type) {
     case 's3':
-      env.RESTIC_REPOSITORY = `s3:https://${repo.endpoint}/${repo.bucket}`
-      break
+      return `s3:https://${repo.endpoint}/${repo.bucket}`
     case 'local':
-      env.RESTIC_REPOSITORY = repo.path!
-      break
+      return repo.path!
     case 'sftp':
-      env.RESTIC_REPOSITORY = `sftp:${repo.host}:${repo.path}`
-      break
+      return `sftp:${repo.host}:${repo.path}`
+  }
+}
+
+export function buildResticEnv(repo: Repository): Record<string, string> {
+  const env: Record<string, string> = {
+    RESTIC_REPOSITORY: buildRepositoryLocation(repo),
   }
 
   if (repo.credentials.password) env.RESTIC_PASSWORD = repo.credentials.password
@@ -161,6 +162,9 @@ export function buildS3Options(repo: Repository): string[] {
   const options: string[] = []
   if (repo.options?.bucket_lookup) {
     options.push('-o', `s3.bucket-lookup=${repo.options.bucket_lookup}`)
+  }
+  if (repo.region) {
+    options.push('-o', `s3.region=${repo.region}`)
   }
   return options
 }

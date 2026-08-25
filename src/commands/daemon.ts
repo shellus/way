@@ -2,6 +2,7 @@ import cron from 'node-cron'
 import { loadConfig } from '../core/config'
 import { backup } from './backup'
 import { gc } from './gc'
+import { replicate } from './replicate'
 import type { Project, RulesConfig } from '../types'
 
 export interface DaemonOptions {
@@ -84,6 +85,31 @@ export async function daemon(options: DaemonOptions): Promise<void> {
     }, CRON_OPTIONS)
 
     console.log(`Scheduled backup for ${projects.join(', ')}: ${schedule}`)
+  }
+
+  for (const [name, replication] of Object.entries(config.rules.replications || {})) {
+    assertValidSchedule(replication.schedule, `replications.${name}.schedule`)
+    if (isEnabledSchedule(replication.schedule)) {
+      cron.schedule(replication.schedule, () => {
+        executeTask(async () => {
+          console.log(`[${new Date().toISOString()}] Running replication: ${name}`)
+          const result = await replicate({ names: [name] })
+          if (result.failed.length > 0) throw new Error(`Replication failed: ${result.failed.join(', ')}`)
+        })
+      }, CRON_OPTIONS)
+      console.log(`Scheduled replication ${name}: ${replication.schedule}`)
+    }
+
+    assertValidSchedule(replication.prune_schedule, `replications.${name}.prune_schedule`)
+    if (isEnabledSchedule(replication.prune_schedule)) {
+      cron.schedule(replication.prune_schedule, () => {
+        executeTask(async () => {
+          console.log(`[${new Date().toISOString()}] Running replication prune: ${name}`)
+          await gc({ remote: replication.to, dryRun: false, retention: replication.retention })
+        })
+      }, CRON_OPTIONS)
+      console.log(`Scheduled replication prune ${name}: ${replication.prune_schedule}`)
+    }
   }
 
   // 维护任务：prune

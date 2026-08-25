@@ -3,6 +3,7 @@ export interface Repository {
   path?: string
   endpoint?: string
   bucket?: string
+  region?: string
   host?: string
   options?: {
     bucket_lookup?: string
@@ -26,6 +27,15 @@ export interface Retention {
   keep_yearly?: number
   keep_hosts?: string[]
   max_age_days?: number
+}
+
+export interface Replication {
+  from: string
+  to: string
+  schedule?: string | false
+  snapshot_policy?: 'latest-per-project'
+  retention?: Retention
+  prune_schedule?: string | false
 }
 
 export interface UptimeKumaConfig {
@@ -68,6 +78,7 @@ export interface RulesConfig {
       schedule?: string | false
     }
   }
+  replications?: Record<string, Replication>
   projects: Record<string, Project>
   global_excludes?: string[]
 }
