@@ -54,6 +54,7 @@ describe('daemon scheduled backup batching', () => {
     expect(cron.schedule).toHaveBeenCalledTimes(2)
     const sharedSchedule = vi.mocked(cron.schedule).mock.calls.find(([schedule]) => schedule === '3 * * * *')
     expect(sharedSchedule).toBeDefined()
+    expect(sharedSchedule![2]).toEqual({ missedExecutionTolerance: 5_000 })
 
     const callback = sharedSchedule![1] as () => void
     callback()

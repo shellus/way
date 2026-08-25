@@ -43,6 +43,10 @@ function collectBackupArgs(command: Command): string[] {
   return command.args.filter((a: string) => a.startsWith('-') && !['--dry-run'].includes(a))
 }
 
+function resolveRemote(command: Command): string {
+  return command.optsWithGlobals().remote
+}
+
 const commonHelpText = `
 全局用法:
   way --remote=oss <command> ...  指定仓库（全局选项需放在子命令前）
@@ -85,7 +89,7 @@ program
   .allowUnknownOption()
   .allowExcessArguments()
   .action(async function(projects) {
-    const remote = this.parent.opts().remote
+    const remote = resolveRemote(this)
     const dryRun = this.opts().dryRun
     const extraArgs = collectBackupArgs(this)
     const result = await backup({
@@ -108,7 +112,7 @@ program
   .option('-v, --verbose', '显示详细恢复计划（传递 --verbose=2 给 restic）')
   .addHelpText('after', commonHelpText)
   .action(async function(projects, cmdOptions) {
-    const remote = this.parent.opts().remote
+    const remote = resolveRemote(this)
     await restore({
       remote,
       projects,
@@ -127,7 +131,7 @@ program
   .option('--dry-run', '模拟清理（不实际删除）')
   .addHelpText('after', commonHelpText)
   .action(async function(cmdOptions) {
-    const remote = this.parent.opts().remote
+    const remote = resolveRemote(this)
     await gc({ remote, dryRun: cmdOptions.dryRun })
   })
 
@@ -136,7 +140,7 @@ program
   .description('管理 systemd 定时任务 (show|install|uninstall|status)')
   .addHelpText('after', commonHelpText)
   .action(async (action, options, command) => {
-    const remote = command.parent.opts().remote
+    const remote = resolveRemote(command)
     await systemd({ remote, action: action as 'show' | 'install' | 'uninstall' | 'status' })
   })
 
@@ -145,7 +149,7 @@ program
   .description('管理 Windows 原生开机守护任务 (show|install|uninstall|status)')
   .addHelpText('after', commonHelpText)
   .action(async (action, options, command) => {
-    const remote = command.parent.opts().remote
+    const remote = resolveRemote(command)
     await windowsService({ remote, action: action as 'show' | 'install' | 'uninstall' | 'status' })
   })
 
@@ -154,7 +158,7 @@ program
   .description('启动常驻进程，按配置定时执行备份')
   .addHelpText('after', commonHelpText)
   .action(async (options, command) => {
-    const remote = command.parent.opts().remote
+    const remote = resolveRemote(command)
     await daemon({ remote })
   })
 
@@ -176,7 +180,7 @@ program
   .allowUnknownOption()
   .allowExcessArguments()
   .action(async function(args) {
-    const remote = this.parent.opts().remote
+    const remote = resolveRemote(this)
     const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
     const config = loadConfig(wayDir, remote)
     const env = buildResticEnv(config.repository)

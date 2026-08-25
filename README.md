@@ -68,7 +68,7 @@
 ## 依赖
 
 - Linux x64 独立发行包无需预装 Node.js、npm、Bun 或 restic
-- npm 安装方式需要 Node.js >= 18
+- npm 安装方式需要 Node.js >= 22.12
 - Linux x64 平台内置 [restic](https://restic.net/) 0.18.1，其他平台需自行安装 restic
 
 `way` 查找 restic 的顺序：
@@ -340,6 +340,8 @@ way backup data_deps
 **schedule 语法**（node-cron 格式）：
 
 `schedule` 支持 node-cron 字符串或 `false`。`false` 表示不创建自动调度任务，只能通过 `way backup <project>` 或 `way backup` 手动触发。项目未设置 `schedule` 时继承 `defaults.schedule`；如果全局和项目都未设置，则不自动调度。
+
+daemon 的调度心跳最多容忍 5 秒延迟；事件循环短暂阻塞后仍会补执行本轮任务，超过窗口则由 node-cron 报告为 missed execution。
 
 | 格式 | 说明 | 示例 |
 |------|------|------|

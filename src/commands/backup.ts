@@ -4,7 +4,7 @@ import type { Project, ProjectHook, RunResult } from '../types'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { execaCommand } from 'execa'
+import { execa } from 'execa'
 
 export interface BackupOptions {
   remote: string
@@ -226,7 +226,7 @@ async function runProjectHooks(hooks: ProjectHook[] | undefined, context: HookCo
     }
 
     console.log(`Running ${context.label} hook for ${context.projectName}: ${normalized.run}`)
-    const subprocess = execaCommand(normalized.run, {
+    const subprocess = execa(normalized.run, {
       shell: true,
       stdio: 'inherit',
       timeout: parseTimeout(normalized.timeout),

@@ -13,6 +13,10 @@ const taskQueue: Array<() => Promise<void>> = []
 
 type Schedule = string | false | undefined
 
+const CRON_OPTIONS = {
+  missedExecutionTolerance: 5_000,
+} as const
+
 export function resolveProjectSchedule(project: Pick<Project, 'schedule'>, defaults: RulesConfig['defaults'] = {}): string | false {
   if (project.schedule !== undefined) return project.schedule
   return defaults?.schedule ?? false
@@ -77,7 +81,7 @@ export async function daemon(options: DaemonOptions): Promise<void> {
         console.log(`[${new Date().toISOString()}] Running backup: ${projects.join(', ')}`)
         await backup({ remote: options.remote, projects })
       })
-    })
+    }, CRON_OPTIONS)
 
     console.log(`Scheduled backup for ${projects.join(', ')}: ${schedule}`)
   }
@@ -91,7 +95,7 @@ export async function daemon(options: DaemonOptions): Promise<void> {
         console.log(`[${new Date().toISOString()}] Running prune`)
         await gc({ remote: options.remote, dryRun: false })
       })
-    })
+    }, CRON_OPTIONS)
     console.log(`Scheduled prune: ${pruneSchedule}`)
   }
 
@@ -104,7 +108,7 @@ export async function daemon(options: DaemonOptions): Promise<void> {
         console.log(`[${new Date().toISOString()}] Running check`)
         // TODO: 实现 check 命令
       })
-    })
+    }, CRON_OPTIONS)
     console.log(`Scheduled check: ${checkSchedule}`)
   }
 
