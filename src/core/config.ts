@@ -8,16 +8,18 @@ export interface Config {
   rules: RulesConfig
 }
 
+const configSchema = yaml.CORE_SCHEMA.withTags(yaml.mergeTag)
+
 export function loadConfig(wayDir: string, remoteName: string): Config {
   const repoFile = path.join(wayDir, 'repositories.yaml')
-  const repoConfig = yaml.load(fs.readFileSync(repoFile, 'utf8')) as RepositoriesConfig
+  const repoConfig = yaml.load(fs.readFileSync(repoFile, 'utf8'), { schema: configSchema }) as RepositoriesConfig
 
   const repoName = remoteName === 'default' ? repoConfig.default : remoteName
   const repository = repoConfig.repositories[repoName]
   if (!repository) throw new Error(`Repository not found: ${repoName}`)
 
   const rulesFile = path.join(wayDir, 'rules.yaml')
-  const rules = yaml.load(fs.readFileSync(rulesFile, 'utf8')) as RulesConfig
+  const rules = yaml.load(fs.readFileSync(rulesFile, 'utf8'), { schema: configSchema }) as RulesConfig
 
   // 验证新格式配置
   const legacySchedule = 'schedule' in rules ? rules.schedule : undefined
