@@ -54,7 +54,9 @@ export function resolveDaemonLaunch(options: Pick<WindowsServiceDependencies, 'e
   const execPath = options.execPath ?? process.execPath
 
   if (env.WAY_BIN) return { command: env.WAY_BIN, args: ['daemon'] }
-  if (argv[1] && path.isAbsolute(argv[1])) return { command: execPath, args: [argv[1], 'daemon'] }
+  if (argv[1] && (path.isAbsolute(argv[1]) || path.win32.isAbsolute(argv[1]))) {
+    return { command: execPath, args: [argv[1], 'daemon'] }
+  }
   return { command: execPath, args: ['daemon'] }
 }
 
