@@ -94,6 +94,19 @@ function buildResticOptions(s3Options: string[], retryLock?: string): string[] {
   return options
 }
 
+async function executeGc(
+  args: string[],
+  dryRun: boolean,
+  env: Record<string, string>,
+  resticOptions: string[],
+): Promise<void> {
+  if (!dryRun) {
+    console.log('Removing stale repository locks before cleanup...')
+    await execRestic(['unlock'], env, resticOptions)
+  }
+  await execRestic(args, env, resticOptions)
+}
+
 async function runStrictGc(
   retention: Retention,
   dryRun: boolean,
@@ -118,7 +131,7 @@ async function runStrictGc(
     return
   }
 
-  await execRestic(['forget', '--prune', ...plan.remove.map((snapshot) => snapshot.id)], env, resticOptions)
+  await executeGc(['forget', '--prune', ...plan.remove.map((snapshot) => snapshot.id)], false, env, resticOptions)
 }
 
 export async function gc(options: GcOptions): Promise<void> {
@@ -158,5 +171,5 @@ export async function gc(options: GcOptions): Promise<void> {
   if (keepYearly !== undefined) args.push(`--keep-yearly=${keepYearly}`)
   if (dryRun) args.push('--dry-run')
 
-  await execRestic(args, env, resticOptions)
+  await executeGc(args, dryRun, env, resticOptions)
 }

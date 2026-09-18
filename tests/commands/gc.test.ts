@@ -53,6 +53,7 @@ describe('buildSnapshotRetentionPlan', () => {
 describe('gc strict retention', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(execRestic).mockReset().mockResolvedValue(undefined)
     vi.mocked(buildResticEnv).mockReturnValue({ RESTIC_REPOSITORY: '/repo' })
     vi.mocked(buildS3Options).mockReturnValue(['-o', 's3.bucket-lookup=dns'])
     vi.mocked(execResticCapture).mockResolvedValue(JSON.stringify(snapshots))
@@ -117,4 +118,30 @@ describe('gc strict retention', () => {
       ['-o', 's3.bucket-lookup=dns'],
     )
   })
+  it.each([false, true])('正式 GC 先普通解锁，解锁失败中止（strict=%s）', async (strict) => {
+    if (!strict) {
+      vi.mocked(loadConfig).mockReturnValue({
+        repository: { type: 'local', path: '/repo', credentials: {} },
+        rules: { projects: {}, defaults: { retention: { keep_daily: 7 } } },
+      })
+    }
+    vi.mocked(execRestic).mockRejectedValueOnce(new Error('unlock failed'))
+    await expect(gc({ remote: 'default' })).rejects.toThrow('unlock failed')
+    expect(execRestic).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(execRestic).mock.calls[0][0]).toEqual(['unlock'])
+  })
+
+  it('计数策略先普通解锁再清理，dry-run 不解锁', async () => {
+    vi.mocked(loadConfig).mockReturnValue({
+      repository: { type: 'local', path: '/repo', credentials: {} },
+      rules: { projects: {}, defaults: { retention: { keep_daily: 7 } } },
+    })
+    await gc({ remote: 'default' })
+    expect(vi.mocked(execRestic).mock.calls.map(([args]) => args[0])).toEqual(['unlock', 'forget'])
+    expect(vi.mocked(execRestic).mock.calls[0][0]).toEqual(['unlock'])
+    vi.mocked(execRestic).mockClear()
+    await gc({ remote: 'default', dryRun: true })
+    expect(vi.mocked(execRestic).mock.calls.map(([args]) => args[0])).toEqual(['forget'])
+  })
+
 })
