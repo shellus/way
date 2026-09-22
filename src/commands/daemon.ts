@@ -3,6 +3,7 @@ import { loadConfig } from '../core/config'
 import { backup } from './backup'
 import { gc } from './gc'
 import { replicate } from './replicate'
+import { notifyUptimeKuma } from '../core/uptime-kuma'
 import type { Project, RulesConfig } from '../types'
 
 export interface DaemonOptions {
@@ -30,6 +31,28 @@ export function isEnabledSchedule(schedule: Schedule): schedule is string {
 export function assertValidSchedule(schedule: Schedule, label: string): void {
   if (schedule === '') {
     throw new Error(`${label} must be a cron expression or false. Use false to disable scheduling.`)
+  }
+}
+
+export function resolvePrunePushUrl(rules: RulesConfig): string | undefined {
+  return rules.maintenance?.prune?.uptime_kuma?.push_url || rules.uptime_kuma?.push_url
+}
+
+// 定时 prune 失败时必须推送 DOWN，否则陈旧锁等故障只会留在 daemon 日志里。
+export async function runPruneWithNotification(remote: string, pushUrl: string | undefined): Promise<void> {
+  const startTime = Date.now()
+  try {
+    await gc({ remote, dryRun: false })
+  } catch (error) {
+    if (pushUrl) {
+      const reason = error instanceof Error ? error.message : String(error)
+      await notifyUptimeKuma({ status: 'down', msg: `Prune failed: ${reason}`, ping: Date.now() - startTime }, pushUrl)
+    }
+    throw error
+  }
+
+  if (pushUrl) {
+    await notifyUptimeKuma({ status: 'up', msg: 'Prune succeeded', ping: Date.now() - startTime }, pushUrl)
   }
 }
 
@@ -116,10 +139,11 @@ export async function daemon(options: DaemonOptions): Promise<void> {
   const pruneSchedule = config.rules.maintenance?.prune?.schedule
   assertValidSchedule(pruneSchedule, 'maintenance.prune.schedule')
   if (isEnabledSchedule(pruneSchedule)) {
+    const prunePushUrl = resolvePrunePushUrl(config.rules)
     cron.schedule(pruneSchedule, () => {
       executeTask(async () => {
         console.log(`[${new Date().toISOString()}] Running prune`)
-        await gc({ remote: options.remote, dryRun: false })
+        await runPruneWithNotification(options.remote, prunePushUrl)
       })
     }, CRON_OPTIONS)
     console.log(`Scheduled prune: ${pruneSchedule}`)

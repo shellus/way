@@ -73,6 +73,7 @@ export interface RulesConfig {
     prune?: {
       schedule?: string | false
       retry_lock?: string
+      uptime_kuma?: UptimeKumaConfig
     }
     check?: {
       schedule?: string | false

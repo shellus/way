@@ -117,5 +117,7 @@ maintenance:
   prune:
     schedule: "0 4 * * 0"  # 每周日凌晨 4 点清理
     # retry_lock: "30m"      # 备份仍持有仓库锁时等待，避免立即失败
+    # uptime_kuma:           # 定时 prune 成功推送 UP、失败推送 DOWN；未配置时回退到全局 uptime_kuma
+    #   push_url: "https://uptime.example.com/api/push/prune-placeholder"
   check:
     schedule: false        # 不执行

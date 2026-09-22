@@ -1,5 +1,6 @@
 import { loadConfig } from '../core/config'
 import { buildResticEnv, buildBackupArgs, buildS3Options, collectIncludeDirs, execRestic } from '../core/restic'
+import { notifyUptimeKuma } from '../core/uptime-kuma'
 import type { Project, ProjectHook, RunResult } from '../types'
 import fs from 'fs'
 import os from 'os'
@@ -118,7 +119,11 @@ export async function backup(options: BackupOptions): Promise<RunResult> {
 
   if (!dryRun) {
     for (const [pushUrl, result] of groupUptimeKumaResults(projectResults)) {
-      await notifyUptimeKuma(result, pushUrl)
+      await notifyUptimeKuma({
+        status: result.failed.length > 0 ? 'down' : 'up',
+        msg: `Succeeded: ${result.succeeded.length}, Failed: ${result.failed.length}`,
+        ping: result.duration,
+      }, pushUrl)
     }
   }
 
@@ -255,22 +260,5 @@ async function runProjectHooks(hooks: ProjectHook[] | undefined, context: HookCo
     } finally {
       if (cleanupOnExit) process.removeListener('exit', cleanupOnExit)
     }
-  }
-}
-
-async function notifyUptimeKuma(result: RunResult, pushUrl: string): Promise<void> {
-  const status = result.failed.length > 0 ? 'down' : 'up'
-  const msg = `Succeeded: ${result.succeeded.length}, Failed: ${result.failed.length}`
-  const url = `${pushUrl}?status=${status}&msg=${encodeURIComponent(msg)}&ping=${result.duration}`
-
-  try {
-    const response = await fetch(url)
-    if (response.ok) {
-      console.log(`Uptime Kuma notified: status=${status}, ping=${result.duration}ms`)
-    } else {
-      console.error('Uptime Kuma notification failed')
-    }
-  } catch (error) {
-    console.error('Uptime Kuma notification failed:', error)
   }
 }

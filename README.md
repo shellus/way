@@ -246,6 +246,7 @@ WAY_DIR=/path/to/config way restic snapshots
 - **projects.*.uptime_kuma.push_url**: 项目级 Uptime Kuma Push 地址，优先于全局地址
 - **replications**: 仓库复制任务，包含源仓库、目标仓库、调度和目标仓库独立保留策略
 - **maintenance**: 维护任务配置（prune、check）
+- **maintenance.prune.uptime_kuma.push_url**: daemon 定时 prune 的 Uptime Kuma Push 地址，未配置时回退到全局地址；prune 成功推送 UP，失败推送带原因的 DOWN
 - **global_excludes**: 全局排除规则
 
 `defaults.retention` 支持两种互斥模式：
