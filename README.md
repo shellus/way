@@ -440,6 +440,27 @@ repositories:
       secret_access_key: your-secret-key
 ```
 
+restic 未原生支持的存储（如网盘）可以通过 rclone 后端接入：
+
+```yaml
+repositories:
+  drive:
+    type: rclone
+    remote: myremote
+    path: way/myhost
+    options:
+      rclone_program: /usr/local/bin/rclone
+      rclone_config: /root/.way/rclone.conf
+      pack_size: 64
+    credentials:
+      password: your-restic-password
+```
+
+- 仓库地址为 `rclone:<remote>:<path>`；restic 每次运行时临时启动 rclone，不需要常驻服务。
+- `rclone_program` 作为 `-o rclone.program=` 传递，Windows 路径中的反斜杠会自动改为正斜杠。
+- `rclone_config` 作为 `RCLONE_CONFIG` 环境变量传递。daemon 以 `SYSTEM`/`root` 运行时应放在其可读写的位置；会刷新登录凭证的后端需要该文件可写。
+- `pack_size` 作为 `--pack-size` 传递（MiB），调大可减少网盘上的文件数和请求数。
+
 建议设置文件权限：`chmod 600 ~/.way/repositories.yaml`
 
 `repositories.yaml` 和 `rules.yaml` 支持 YAML merge anchor（`<<`）；Way 使用 YAML 1.2 Core Schema 并显式启用 merge tag，不会同时启用 YAML 1.1 的日期自动转换等额外类型。

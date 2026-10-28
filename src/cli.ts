@@ -8,7 +8,7 @@ import { systemd } from './commands/systemd'
 import { windowsService } from './commands/windows-service'
 import { daemon } from './commands/daemon'
 import { replicate } from './commands/replicate'
-import { execRestic, buildResticEnv, buildS3Options } from './core/restic'
+import { execRestic, buildResticEnv, buildRepositoryOptions } from './core/restic'
 import { loadConfig } from './core/config'
 import { resolveExampleConfigPath } from './core/restic-bin'
 
@@ -196,8 +196,8 @@ program
     const wayDir = process.env.WAY_DIR || `${process.env.HOME}/.way`
     const config = loadConfig(wayDir, remote)
     const env = buildResticEnv(config.repository)
-    const s3Options = buildS3Options(config.repository)
-    await execRestic(args, env, s3Options)
+    const repositoryOptions = buildRepositoryOptions(config.repository)
+    await execRestic(args, env, repositoryOptions)
   })
 
 if (process.argv.length <= 2) {

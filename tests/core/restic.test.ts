@@ -3,7 +3,7 @@ import { execa } from 'execa'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { buildResticEnv, buildBackupArgs, buildRestoreArgs, buildS3Options, execRestic, execResticCapture, collectIncludeDirs, normalizeResticPath } from '../../src/core/restic'
+import { buildResticEnv, buildBackupArgs, buildRestoreArgs, buildRepositoryOptions, execRestic, execResticCapture, collectIncludeDirs, normalizeResticPath } from '../../src/core/restic'
 
 vi.mock('execa', () => ({
   execa: vi.fn().mockResolvedValue({}),
@@ -33,9 +33,43 @@ describe('buildResticEnv', () => {
       credentials: {},
     }
 
-    expect(buildS3Options(repo)).toEqual([
+    expect(buildRepositoryOptions(repo)).toEqual([
       '-o', 's3.bucket-lookup=dns',
       '-o', 's3.region=region-1',
+    ])
+  })
+
+  it('构建 rclone 仓库地址与 RCLONE_CONFIG', () => {
+    const repo: Repository = {
+      type: 'rclone',
+      remote: 'quark',
+      path: 'way/host-a',
+      options: { rclone_config: '/root/.way/rclone.conf' },
+      credentials: { password: 'pass123' },
+    }
+    const env = buildResticEnv(repo)
+    expect(env.RESTIC_REPOSITORY).toBe('rclone:quark:way/host-a')
+    expect(env.RCLONE_CONFIG).toBe('/root/.way/rclone.conf')
+    expect(env.RESTIC_PASSWORD).toBe('pass123')
+  })
+
+  it('未配置 rclone_config 时不设置 RCLONE_CONFIG', () => {
+    const repo: Repository = { type: 'rclone', remote: 'quark', path: 'way', credentials: {} }
+    expect(buildResticEnv(repo)).not.toHaveProperty('RCLONE_CONFIG')
+  })
+
+  it('构建 rclone.program 与 pack-size 选项，Windows 路径改为正斜杠', () => {
+    const repo: Repository = {
+      type: 'rclone',
+      remote: 'quark',
+      path: 'way',
+      options: { rclone_program: 'D:\\bin\\rclone-quark.exe', pack_size: 64 },
+      credentials: {},
+    }
+
+    expect(buildRepositoryOptions(repo)).toEqual([
+      '-o', 'rclone.program=D:/bin/rclone-quark.exe',
+      '--pack-size=64',
     ])
   })
 })

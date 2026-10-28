@@ -1,12 +1,16 @@
 export interface Repository {
-  type: 'local' | 's3' | 'sftp'
+  type: 'local' | 's3' | 'sftp' | 'rclone'
   path?: string
   endpoint?: string
   bucket?: string
   region?: string
   host?: string
+  remote?: string
   options?: {
     bucket_lookup?: string
+    rclone_program?: string
+    rclone_config?: string
+    pack_size?: number
   }
   credentials: {
     password?: string

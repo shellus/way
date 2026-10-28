@@ -12,6 +12,8 @@ export function buildRepositoryLocation(repo: Repository): string {
       return repo.path!
     case 'sftp':
       return `sftp:${repo.host}:${repo.path}`
+    case 'rclone':
+      return `rclone:${repo.remote}:${repo.path}`
   }
 }
 
@@ -23,6 +25,7 @@ export function buildResticEnv(repo: Repository): Record<string, string> {
   if (repo.credentials.password) env.RESTIC_PASSWORD = repo.credentials.password
   if (repo.credentials.access_key_id) env.AWS_ACCESS_KEY_ID = repo.credentials.access_key_id
   if (repo.credentials.secret_access_key) env.AWS_SECRET_ACCESS_KEY = repo.credentials.secret_access_key
+  if (repo.options?.rclone_config) env.RCLONE_CONFIG = repo.options.rclone_config
 
   return env
 }
@@ -158,7 +161,7 @@ export function buildRestoreArgs(name: string, project: Project, options: Restor
   return args
 }
 
-export function buildS3Options(repo: Repository): string[] {
+export function buildRepositoryOptions(repo: Repository): string[] {
   const options: string[] = []
   if (repo.options?.bucket_lookup) {
     options.push('-o', `s3.bucket-lookup=${repo.options.bucket_lookup}`)
@@ -166,20 +169,27 @@ export function buildS3Options(repo: Repository): string[] {
   if (repo.region) {
     options.push('-o', `s3.region=${repo.region}`)
   }
+  if (repo.options?.rclone_program) {
+    // restic 按 shell 规则拆分 rclone.program，Windows 反斜杠会被吞掉，统一改为正斜杠
+    options.push('-o', `rclone.program=${repo.options.rclone_program.replace(/\\/g, '/')}`)
+  }
+  if (repo.options?.pack_size) {
+    options.push(`--pack-size=${repo.options.pack_size}`)
+  }
   return options
 }
 
-export async function execRestic(args: string[], env: Record<string, string>, s3Options: string[] = []): Promise<void> {
-  await runRestic(args, env, s3Options, false)
+export async function execRestic(args: string[], env: Record<string, string>, repositoryOptions: string[] = []): Promise<void> {
+  await runRestic(args, env, repositoryOptions, false)
 }
 
-export async function execResticCapture(args: string[], env: Record<string, string>, s3Options: string[] = []): Promise<string> {
-  return runRestic(args, env, s3Options, true)
+export async function execResticCapture(args: string[], env: Record<string, string>, repositoryOptions: string[] = []): Promise<string> {
+  return runRestic(args, env, repositoryOptions, true)
 }
 
-async function runRestic(args: string[], env: Record<string, string>, s3Options: string[], capture: boolean): Promise<string> {
+async function runRestic(args: string[], env: Record<string, string>, repositoryOptions: string[], capture: boolean): Promise<string> {
   try {
-    const result = await execa(resolveResticBin(), [...s3Options, ...args], {
+    const result = await execa(resolveResticBin(), [...repositoryOptions, ...args], {
       env: { ...process.env, ...env },
       ...(capture ? { stdout: 'pipe', stderr: 'inherit' } : { stdio: 'inherit' }),
     })

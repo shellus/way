@@ -2,7 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { loadConfig } from '../core/config'
-import { buildRepositoryLocation, buildResticEnv, buildS3Options, execRestic, execResticCapture } from '../core/restic'
+import { buildRepositoryLocation, buildResticEnv, buildRepositoryOptions, execRestic, execResticCapture } from '../core/restic'
 import type { Replication, RunResult } from '../types'
 
 export interface ReplicateOptions {
@@ -76,8 +76,8 @@ async function replicateOne(wayDir: string, name: string, replication: Replicati
 
   const sourceEnv = buildResticEnv(sourceConfig.repository)
   const destinationEnv = buildResticEnv(destinationConfig.repository)
-  const sourceOptions = buildS3Options(sourceConfig.repository)
-  const destinationOptions = buildS3Options(destinationConfig.repository)
+  const sourceOptions = buildRepositoryOptions(sourceConfig.repository)
+  const destinationOptions = buildRepositoryOptions(destinationConfig.repository)
   const snapshots = JSON.parse(
     await execResticCapture(['snapshots', '--json'], sourceEnv, sourceOptions),
   ) as ResticSnapshot[]

@@ -1,5 +1,5 @@
 import { loadConfig } from '../core/config'
-import { buildResticEnv, buildS3Options, execRestic, execResticCapture } from '../core/restic'
+import { buildResticEnv, buildRepositoryOptions, execRestic, execResticCapture } from '../core/restic'
 import type { Retention } from '../types'
 
 export interface GcOptions {
@@ -88,8 +88,8 @@ function printSnapshots(label: string, snapshots: ResticSnapshot[]): void {
   }
 }
 
-function buildResticOptions(s3Options: string[], retryLock?: string): string[] {
-  const options = [...s3Options]
+function buildResticOptions(repositoryOptions: string[], retryLock?: string): string[] {
+  const options = [...repositoryOptions]
   if (retryLock) options.push(`--retry-lock=${retryLock}`)
   return options
 }
@@ -144,7 +144,7 @@ export async function gc(options: GcOptions): Promise<void> {
 
   const env = buildResticEnv(config.repository)
   const resticOptions = buildResticOptions(
-    buildS3Options(config.repository),
+    buildRepositoryOptions(config.repository),
     config.rules.maintenance?.prune?.retry_lock,
   )
 

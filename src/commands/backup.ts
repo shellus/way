@@ -1,5 +1,5 @@
 import { loadConfig } from '../core/config'
-import { buildResticEnv, buildBackupArgs, buildS3Options, collectIncludeDirs, execRestic } from '../core/restic'
+import { buildResticEnv, buildBackupArgs, buildRepositoryOptions, collectIncludeDirs, execRestic } from '../core/restic'
 import { notifyUptimeKuma } from '../core/uptime-kuma'
 import type { Project, ProjectHook, RunResult } from '../types'
 import fs from 'fs'
@@ -23,7 +23,7 @@ export async function backup(options: BackupOptions): Promise<RunResult> {
   const config = loadConfig(wayDir, options.remote)
 
   const env = buildResticEnv(config.repository)
-  const s3Options = buildS3Options(config.repository)
+  const repositoryOptions = buildRepositoryOptions(config.repository)
   const globalExcludes = config.rules.global_excludes || []
 
   const projects = options.projects && options.projects.length > 0
@@ -85,7 +85,7 @@ export async function backup(options: BackupOptions): Promise<RunResult> {
       const args = buildBackupArgs(projectName, project, globalExcludes, filesFrom)
       if (dryRun) args.push('--dry-run')
       args.push(...extraArgs)
-      await execRestic(args, env, s3Options)
+      await execRestic(args, env, repositoryOptions)
 
       await runProjectHooks(project.hooks?.after_backup, {
         projectName,

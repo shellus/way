@@ -30,10 +30,27 @@ const rules = {
       schedule: '30 5 * * *',
       snapshot_policy: 'latest-per-project' as const,
     },
+    'to-drive': {
+      from: 'local',
+      to: 'drive',
+    },
   },
 }
 
 function configFor(remote: string): Config {
+  if (remote === 'drive') {
+    return {
+      repository: {
+        type: 'rclone',
+        remote: 'quark',
+        path: 'way/host-a',
+        options: { rclone_program: '/usr/local/bin/rclone-quark', rclone_config: '/root/.way/rclone.conf', pack_size: 64 },
+        credentials: { password: 'drive-password' },
+      },
+      rules,
+    }
+  }
+
   if (remote === 'cos') {
     return {
       repository: {
@@ -138,6 +155,20 @@ describe('replicate', () => {
       'config-latest',
     ]))
     expect(vi.mocked(execRestic).mock.calls[0][0]).not.toContain('init')
+  })
+
+  it('复制到 rclone 仓库时传递 rclone 程序、配置与 pack-size', async () => {
+    const result = await replicate({ names: ['to-drive'] })
+
+    expect(result.failed).toEqual([])
+    const [args, env, options] = vi.mocked(execRestic).mock.calls[0]
+    expect(args).toEqual(expect.arrayContaining(['copy', '--from-repo=/local-repository', 'data-latest']))
+    expect(env).toEqual(expect.objectContaining({
+      RESTIC_REPOSITORY: 'rclone:quark:way/host-a',
+      RESTIC_PASSWORD: 'drive-password',
+      RCLONE_CONFIG: '/root/.way/rclone.conf',
+    }))
+    expect(options).toEqual(['-o', 'rclone.program=/usr/local/bin/rclone-quark', '--pack-size=64'])
   })
 
   it('找不到复制任务时返回失败且不调用 restic', async () => {

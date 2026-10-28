@@ -29,3 +29,15 @@ repositories:
     path: /backup/myhost
     credentials:
       password: your-restic-password
+
+  # 通过 rclone 访问 restic 未原生支持的存储（网盘等）
+  drive:
+    type: rclone
+    remote: myremote          # rclone 配置中的 remote 名称
+    path: way/myhost
+    options:
+      rclone_program: /usr/local/bin/rclone   # 可选，默认使用 PATH 中的 rclone
+      rclone_config: /root/.way/rclone.conf   # 可选，作为 RCLONE_CONFIG 传给 rclone
+      pack_size: 64                           # 可选，restic --pack-size（MiB）
+    credentials:
+      password: your-restic-password

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildSnapshotRetentionPlan, gc, type ResticSnapshot } from '../../src/commands/gc'
 import { loadConfig } from '../../src/core/config'
-import { buildResticEnv, buildS3Options, execRestic, execResticCapture } from '../../src/core/restic'
+import { buildResticEnv, buildRepositoryOptions, execRestic, execResticCapture } from '../../src/core/restic'
 
 vi.mock('../../src/core/config', () => ({ loadConfig: vi.fn() }))
 vi.mock('../../src/core/restic', () => ({
   buildResticEnv: vi.fn().mockReturnValue({ RESTIC_REPOSITORY: '/repo' }),
-  buildS3Options: vi.fn().mockReturnValue(['-o', 's3.bucket-lookup=dns']),
+  buildRepositoryOptions: vi.fn().mockReturnValue(['-o', 's3.bucket-lookup=dns']),
   execRestic: vi.fn().mockResolvedValue(undefined),
   execResticCapture: vi.fn(),
 }))
@@ -55,7 +55,7 @@ describe('gc strict retention', () => {
     vi.clearAllMocks()
     vi.mocked(execRestic).mockReset().mockResolvedValue(undefined)
     vi.mocked(buildResticEnv).mockReturnValue({ RESTIC_REPOSITORY: '/repo' })
-    vi.mocked(buildS3Options).mockReturnValue(['-o', 's3.bucket-lookup=dns'])
+    vi.mocked(buildRepositoryOptions).mockReturnValue(['-o', 's3.bucket-lookup=dns'])
     vi.mocked(execResticCapture).mockResolvedValue(JSON.stringify(snapshots))
     vi.mocked(loadConfig).mockReturnValue({
       repository: { type: 'local', path: '/repo', credentials: {} },

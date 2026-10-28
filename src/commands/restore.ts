@@ -1,6 +1,6 @@
 import path from 'path'
 import { loadConfig } from '../core/config'
-import { buildResticEnv, buildRestoreArgs, buildS3Options, execRestic } from '../core/restic'
+import { buildResticEnv, buildRestoreArgs, buildRepositoryOptions, execRestic } from '../core/restic'
 import type { Project, RunResult } from '../types'
 
 export interface RestoreOptions {
@@ -76,7 +76,7 @@ export async function restore(options: RestoreOptions): Promise<RunResult> {
   const config = loadConfig(wayDir, options.remote)
 
   const env = buildResticEnv(config.repository)
-  const s3Options = buildS3Options(config.repository)
+  const repositoryOptions = buildRepositoryOptions(config.repository)
 
   const projects = options.projects && options.projects.length > 0
     ? options.projects
@@ -111,7 +111,7 @@ export async function restore(options: RestoreOptions): Promise<RunResult> {
           verbose: options.verbose,
           includePaths: plan.includePaths,
         })
-        await execRestic(args, env, s3Options)
+        await execRestic(args, env, repositoryOptions)
       }
       succeeded.push(projectName)
     } catch (error) {
